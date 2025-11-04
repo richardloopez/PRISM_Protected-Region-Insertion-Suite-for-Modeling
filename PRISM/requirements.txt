@@ -1,0 +1,16 @@
+# PRISM: Protected-Region Insertion Suite for Modeling
+# Requirements file
+
+# MODELLER must be installed separately from:
+# https://salilab.org/modeller/
+# 
+# MODELLER requires a license key (free for academic use):
+# https://salilab.org/modeller/registration.html
+#
+# Installation instructions:
+# 1. Download MODELLER for your platform
+# 2. Install following the provided instructions
+# 3. Verify installation: python3 -c "import modeller; print(modeller.__version__)"
+
+# No additional Python packages required
+# PRISM uses only Python standard library and MODELLER's built-in modules
