@@ -445,29 +445,29 @@ The NUM_PROCESSORS parameter in config.py dictates how many parallel workers MOD
 
 However, on modern HPC systems that use hyperthreading (e.g., 2 threads per physical core), the --cpus-per-task value can be ambiguous—it may refer to physical cores or logical cores (threads).
 
-    - **The Challenge**: A single MODELLER worker (controller.worker) is a single-threaded process. If 32 physical cores are requested (--cpus-per-task=32) on a 2-way hyperthreaded node (64 total threads) but set NUM_PROCESSORS = 32, 32 workers will be launched. The operating system will likely schedule these 32 workers on the 32 physical cores, leaving the other 32 "hyper-threads" idle and "wasting" half of the node's processing potential.
+   - **The Challenge**: A single MODELLER worker (controller.worker) is a single-threaded process. If 32 physical cores are requested (--cpus-per-task=32) on a 2-way hyperthreaded node (64 total threads) but set NUM_PROCESSORS = 32, 32 workers will be launched. The operating system will likely schedule these 32 workers on the 32 physical cores, leaving the other 32 "hyper-threads" idle and "wasting" half of the node's processing potential.
 
-    - **The Recommendation**: For maximum resource utilization, NUM_PROCESSORS should be set to match the total number of logical cores (threads) available.
+   - **The Recommendation**: For maximum resource utilization, NUM_PROCESSORS should be set to match the total number of logical cores (threads) available.
 
-    - **Example**: SLURM script requests --cpus-per-task=32 on a node with 2-way hyperthreading.
-        - SLURM Allocation: 32 Physical Cores (64 Logical Cores/Threads).
-        - Optimal config.py setting: NUM_PROCESSORS = 64.
-        - This will launch 64 workers, allowing the HPC's scheduler to utilize all 64 threads, maximizing throughput and ensuring you are not competing with other jobs on the node for those idle threads.
+      - **Example**: SLURM script requests --cpus-per-task=32 on a node with 2-way hyperthreading.
+      - SLURM Allocation: 32 Physical Cores (64 Logical Cores/Threads).
+      - Optimal config.py setting: NUM_PROCESSORS = 64.
+      - This will launch 64 workers, allowing the HPC's scheduler to utilize all 64 threads, maximizing throughput and ensuring you are not competing with other jobs on the node for those idle threads.
 
 #### 11.4.2. NUM_MODELS_LOOP vs. NUM_MODELS_AUTO
 
 The optimal strategy for setting the number of models differs between the initial homology modeling and the loop refinement phases.
 
-    - **NUM_MODELS_AUTO** (Homology Modeling): This number is typically large (e.g., 1000+). Because the time to generate each .pdb can vary significantly (depending on the model, thread load, etc.), and the total number of jobs is high, a precise match between NUM_MODELS_AUTO and NUM_PROCESSORS is not critical for efficiency. A large number of models will naturally balance the load across the workers.
+   - **NUM_MODELS_AUTO** (Homology Modeling): This number is typically large (e.g., 1000+). Because the time to generate each .pdb can vary significantly (depending on the model, thread load, etc.), and the total number of jobs is high, a precise match between NUM_MODELS_AUTO and NUM_PROCESSORS is not critical for efficiency. A large number of models will naturally balance the load across the workers.
 
-    - **NUM_MODELS_LOOP** (Loop Refinement): This phase is a significant performance bottleneck. The number of models is small, and each one takes a long time to generate. Crucially, the PRISM controller processes loops sequentially: it must wait for all NUM_MODELS_LOOP to finish for a given base model (e.g., AUTO_1) before it can begin the next loop refinement.
+   - **NUM_MODELS_LOOP** (Loop Refinement): This phase is a significant performance bottleneck. The number of models is small, and each one takes a long time to generate. Crucially, the PRISM controller processes loops sequentially: it must wait for all NUM_MODELS_LOOP to finish for a given base model (e.g., AUTO_1) before it can begin the next loop refinement.
 
-    - **The Recommendation**: For maximum efficiency, **NUM_MODELS_LOOP** should be set to an exact multiple (or equal to) **NUM_PROCESSORS**.
-        - Justification: This setting prevents "idle worker" scenarios.
-        - **Bad Example**: NUM_PROCESSORS = 32 and NUM_MODELS_LOOP = 33.
-        - Result: The pipeline will run 32 models in parallel (e.g., 1 hour). It will then force 31 workers to sit idle for another hour while a single worker processes the 33rd model. This effectively doubles the runtime.
-        - **Good Example**: NUM_PROCESSORS = 32 and NUM_MODELS_LOOP = 64.   
-        - Result: The pipeline runs 32 models in parallel (1 hour), and then immediately runs the next 32 models in parallel (1 hour). The total time is 2 hours, but with zero worker idle time and maximum resource utilization.
+   - **The Recommendation**: For maximum efficiency, **NUM_MODELS_LOOP** should be set to an exact multiple (or equal to) **NUM_PROCESSORS**.
+      - Justification: This setting prevents "idle worker" scenarios.
+      - **Bad Example**: NUM_PROCESSORS = 32 and NUM_MODELS_LOOP = 33.
+      - Result: The pipeline will run 32 models in parallel (e.g., 1 hour). It will then force 31 workers to sit idle for another hour while a single worker processes the 33rd model. This effectively doubles the runtime.
+      - **Good Example**: NUM_PROCESSORS = 32 and NUM_MODELS_LOOP = 64.   
+      - Result: The pipeline runs 32 models in parallel (1 hour), and then immediately runs the next 32 models in parallel (1 hour). The total time is 2 hours, but with zero worker idle time and maximum resource utilization.
 
 ---
 
