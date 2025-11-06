@@ -1,6 +1,6 @@
 # PRISM: Protected-Region Insertion Suite for Modeling
 
-**A professional MODELLER pipeline for high-fidelity protein homology modeling and loop refinement with guaranteed preservation of experimental coordinates.**
+**A MODELLER pipeline for high-fidelity protein homology modeling and loop refinement with guaranteed preservation of experimental coordinates.**
 
 Author: Richard Lopez-Corbalan  
 GitHub: [github.com/richardloopez](https://github.com/richardloopez)
