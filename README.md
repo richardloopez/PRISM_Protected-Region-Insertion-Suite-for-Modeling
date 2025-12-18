@@ -128,7 +128,6 @@ cd PRISM
 # Verify MODELLER installation
 python3 -c "import modeller; print(modeller.__version__)"
 
-# No additional Python packages required (uses MODELLER's environment)
 ```
 ### 3.3. Directory Structure
 
