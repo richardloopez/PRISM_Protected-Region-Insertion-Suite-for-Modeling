@@ -79,8 +79,7 @@ The code is designed to receive **clean inputs**.
         - The protein MUST be in Chain A.
         - They MUST NOT contain ligands.
 - **Utilities**:
-    - tools/test_hetatm.py: Use this to analyze your PDBs. It reports which chains are ATOM vs. HETATM and how many BLK (.) characters .ali file needs.
-    - tools/renumber_pdb.py: Use this to renumber residues sequentially and, critically, to convert ATOM records to HETATM for specific chains (e.g., convert Chain B ligand to HETATM).
+    - This will be placed in tools/ (work in progress folder)
 
 ### 2.2. The Averaging Problem & The Replication Trick
 
