@@ -133,25 +133,15 @@ python3 -c "import modeller; print(modeller.__version__)"
 
 PRISM/
 ├── input/               # Input files (PDBs, FASTA, .ss2, .ali, .ini, .rsr)
-
 ├── PRISM/               # Main package source code (capital letters)
-
 │   ├── config.py        # Centralized configuration
-
 │   ├── controller.py    # Pipeline stage director
-
 │   ├── modeling_engine.py # Core Modeller logic
-
 │   ├── psipred_client.py  # PSIPRED API client
-
 │   └── utils.py         # Utilities and ranking logic
-
 ├── tools/               # Utility scripts for preparation & analysis
-
 ├── modeling_results/    # Default output directory
-
 ├── psipred_results/     # Default output from psipred_client
-
 └── orchestrator.py      # Main SLURM execution/orchestration script
 
 
