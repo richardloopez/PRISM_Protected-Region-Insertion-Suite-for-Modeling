@@ -19,7 +19,7 @@ The pipeline enables high-fidelity modeling of loop insertions and flexible regi
 - **🧬 HETATM Repulsion Shields**: Per-nucleotide repulsion prevents loop clashes with bound molecules (DNA/RNA/ligands)
 - **⚡ Parallel Processing**: Full support for multi-processor execution via MODELLER's parallel framework
 - **🔮 Automatic PSIPRED Prediction**: Integrates a client (psipred_client.py) to automatically submit, poll, and download secondary structure predictions from the PSIPRED web server.
-- **📊 Traceable Nomenclature**: Models are systematically named (e.g., `AUTO_1_LOOP_2_R1.pdb`) for complete traceability
+- **📊 Traceable Nomenclature**: Models are systematically named (e.g., `AUTO_1_L2_R1.pdb`) for complete traceability
 - **🚀 HPC-Ready**: Includes an orchestrator.py script for easy submission to SLURM queuing systems.
 - **🔬 Advanced Flank Control**: Granular user control over the behavior of experimental flanks (the junction between fixed and modeled regions) using EXPERIMENTAL_FLANK_SIZE and REFINE_FLANKS_DURING_AUTOMODEL flags.
 - **🎯 Smart Loop Detection**: Combines PSIPRED secondary structure predictions with experimental boundary analysis
@@ -196,13 +196,13 @@ NUM_PROCESSORS = int(os.environ.get('SLURM_CPUS_PER_TASK', 1))
 
 ```bash
 # Run as a module (recommended for correct package imports)
-python3 -m prism.controller
+python3 -m PRISM.controller
 ```
 
 - Option B: With **SLURM** (HPC Cluster)
 
 ```bash
-# Adjust --cpus-per-task in run_prism.sh if needed
+# Adjust --cpus-per-task in orchestrator.py if needed
 python3 orchestrator.py
 ```
 
