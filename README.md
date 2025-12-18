@@ -20,7 +20,7 @@ The pipeline enables high-fidelity modeling of loop insertions and flexible regi
 - **⚡ Parallel Processing**: Full support for multi-processor execution via MODELLER's parallel framework
 - **🔮 Automatic PSIPRED Prediction**: Integrates a client (psipred_client.py) to automatically submit, poll, and download secondary structure predictions from the PSIPRED web server.
 - **📊 Traceable Nomenclature**: Models are systematically named (e.g., `AUTO_1_LOOP_2_R1.pdb`) for complete traceability
-- **🚀 HPC-Ready**: Includes a run_prism.sh script for easy submission to SLURM queuing systems.
+- **🚀 HPC-Ready**: Includes an orchestrator.py script for easy submission to SLURM queuing systems.
 - **🔬 Advanced Flank Control**: Granular user control over the behavior of experimental flanks (the junction between fixed and modeled regions) using EXPERIMENTAL_FLANK_SIZE and REFINE_FLANKS_DURING_AUTOMODEL flags.
 - **🎯 Smart Loop Detection**: Combines PSIPRED secondary structure predictions with experimental boundary analysis
 - **📈 Comprehensive Evaluation**: Automatic ranking using DOPE-HR scores with detailed CSV output
@@ -51,7 +51,7 @@ When modeling loops in the presence of bound molecules (DNA, RNA, ligands), stan
 MODELLER generates its initial structure by averaging the coordinates of all provided templates. This creates a critical problem:
 
 - **The Problem**: When mixing an experimental PDB (e.g., residues 306-472) with a full-length AlphaFold model (e.g., 1-710), the 306-472 region will be averaged. Its coordinates will move (RMSD > 0), even if marked as "fixed" for later optimization.
-- **The Solution**: PRISM uses a "replication trick" to give overwhelming weight to the main template. By providing 100 or 1000 copies of the main PDB, its contribution to the average dominates, ensuring the experimental core's RMSD remains at 0.0. The flag RSR_INI_PRECALCULATION helps with this process.
+- **The Solution**: PRISM employs a "template weighting" strategy. By utilizing numerous replicas of the main template and the RSR_INI_PRECALCULATION mode, the starting .ini and .rsr files are heavily biased toward the experimental coordinates.
 
 ### 1.4. Experimental Flank Refinement
 
@@ -258,53 +258,45 @@ All outputs are written to `modeling_results/`:
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ STEP 0.5: PSIPRED Prediction (Optional)                 │
-│  • Submits FASTA to PSIPRED server                │
-│  • Polls for results and downloads .ss2 file       │
+│ • Submits FASTA to UCL PSIPRED API via psipred_client   │
+│ • Polls for completion and downloads .ss2 files         │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
-│ STEP 1: Alignment Preparation                          │
-│  • Manual mode: Use provided PIR alignment             │
-│  • Auto mode: Generate with MODELLER salign()          │
-│  • Add CDE line with secondary structure                │
+│ STAGE 1: Prereq-CDE (Alignment Preparation)             │
+│ • Manual Mode: Maps .ss2 to provided PIR alignment      │
+│ • Auto Mode: Performs MODELLER salign() across templates│
+│ • Generates _cde.ali with secondary structure info      │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
-│ STEP 2: Experimental Residue Identification            │
-│  • Map template coordinates to target sequence          │
-│  • Identify core regions (both seqs have residues)      │
-│  • Calculate experimental flanks                        │
+│ STAGE 2: AutoModel (Parallelized Job Array)             │
+│ • Orchestrator splits NUM_MODELS_AUTO into Slurm Tasks  │
+│ • FixedRegionAutoModel freezes core via select_atoms()  │
+│ • Applies HETATM repulsion shields to CA atoms          │
+│ • (Optional) RSR_INI_PRECALCULATION: Generates .ini/.rsr│
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
-│ STEP 3: Loop Detection                                 │
-│  • Extract 'C' (coil) residues from PSIPRED            │
-│  • Exclude deep core (inner experimental residues)     │
-│  • Include flank 'C' residues if enabled               │
-│  • Group into continuous loop ranges                    │
+│ STAGE 3: Rank-AutoModel                                 │
+│ • Assesses initial models using assess_dopehr()         │
+│ • Renames top candidates to AUTO_1.pdb, AUTO_2.pdb, etc.│
+│ • Selects NUM_MODELS_TO_REFINE for the next stage       │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
-│ STEP 4: Homology Modeling (FixedRegionAutoModel)       │
-│  • Use all templates for gap filling                    │
-│  • Freeze experimental core via select_atoms()          │
-│  • Apply HETATM repulsion shields                       │
-│  • Generate and rank N models → AUTO_1.pdb, AUTO_2.pdb │
+│ STAGE 4: Loop Refinement (Parallelized Job Array)       │
+│ • Refines detected coil regions on best AutoModels      │
+│ • FixedRegionLoopModel maintains core/template stability│
+│ • Sequential refinement per loop per model              │
+│ • Nomenclature: AUTO_1_L1_R1.pdb                     │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
-│ STEP 5: Loop Refinement (FixedRegionLoopRefiner)       │
-│  • Sequential refinement of each loop region            │
-│  • Maintain deep core as absolutely fixed               │
-│  • Apply HETATM shields per loop                        │
-│  • Traceable naming: AUTO_1_LOOP1_R1.pdb, etc.         │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│ STEP 6: Final Evaluation                               │
-│  • Assess all models with DOPE-HR                       │
-│  • Rank by score (more negative = better)              │
-│  • Export to final_models_ranking.csv                   │
+│ STAGE 5: Final Ranking                                  │
+│ • Final assessment of all Auto and Loop models          │
+│ • Calculates DOPE-HR and Normalized DOPE-HR Z-scores    │
+│ • Exports results to final_models_ranking.csv           │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -473,9 +465,14 @@ def add_hetatm_repulsion_shield(model, min_dist: float, only_loop_atoms: bool = 
  
 ```
 
-### 11.4. Parallelism and Performance
+### 11.4. Dual-Stage Parallelization
 
-PRISM is built on MODELLER's parallel job architecture to accelerate model generation. When **NUM_PROCESSORS** is set to a value greater than 1, the main controller spawns that number of **controller.worker** processes, each responsible for building a single structure. This parallel design has two important implications for performance tuning.
+Unlike simple scripts, PRISM separates the workflow into two distinct parallelization tiers:
+
+Orchestrator Level (Slurm): Splits the massive AutoModel task into independent Slurm Array tasks to overcome memory or wall-clock limits on single nodes.
+
+Worker Level (MODELLER): PRISM is built on MODELLER's parallel job architecture to accelerate model generation. When **NUM_PROCESSORS** is set to a value greater than 1, the main controller spawns that number of **controller.worker** processes, each responsible for building a single structure. This parallel design has two important implications for performance tuning.
+
 
 #### 11.4.1. NUM_PROCESSORS and HPC (SLURM) Configuration
 
