@@ -129,8 +129,10 @@ cd PRISM
 python3 -c "import modeller; print(modeller.__version__)"
 
 ```
+
 ### 3.3. Directory Structure
 
+```
 PRISM/
 ├── input/               # Input files (PDBs, FASTA, .ss2, .ali, .ini, .rsr)
 ├── PRISM/               # Main package source code (capital letters)
