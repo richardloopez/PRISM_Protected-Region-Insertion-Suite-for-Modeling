@@ -51,7 +51,7 @@ When modeling loops in the presence of bound molecules (DNA, RNA, ligands), stan
 MODELLER generates its initial structure by averaging the coordinates of all provided templates. This creates a critical problem:
 
 - **The Problem**: When mixing an experimental PDB (e.g., residues 306-472) with a full-length AlphaFold model (e.g., 1-710), the 306-472 region will be averaged. Its coordinates will move (RMSD > 0), even if marked as "fixed" for later optimization.
-- **The Solution**: PRISM uses a "replication trick" to give overwhelming weight to the main template. By providing 100 or 1000 copies of the main PDB, its contribution to the average dominates, ensuring the experimental core's RMSD remains at 0.0. The tools/replicate_template.py script automates this process.
+- **The Solution**: PRISM uses a "replication trick" to give overwhelming weight to the main template. By providing 100 or 1000 copies of the main PDB, its contribution to the average dominates, ensuring the experimental core's RMSD remains at 0.0. The flag RSR_INI_PRECALCULATION helps with this process.
 
 ### 1.4. Experimental Flank Refinement
 
@@ -60,7 +60,7 @@ The junction between the 0.0 RMSD experimental core and the new (e.g., AlphaFold
 - **EXPERIMENTAL_FLANK_SIZE**: Defines a buffer zone (e.g., 5 residues) at the edge of the experimental core.
 - **REFINE_FLANKS_DURING_AUTOMODEL**: This boolean flag provides full control:
     - False (Default / Safe Mode): AutoModel (Step 4) freezes the entire experimental region (core + flanks). This provides a maximally stable scaffold. Then, LoopModel (Step 5) intelligently refines only the flank residues that are also predicted as 'C' (coil) by PSIPRED, providing a data-driven tension release.
-    - True (Advanced / Aggressive Mode): AutoModel (Step 4) freezes only the "deep core" (core - flanks). The flanks are optimized immediately (regardless of secondary structure) to resolve tension from the very beginning. This may be useful for severe clashes but risks destroying stable secondary structures in the flank.
+    - True (Advanced / Aggressive Mode): AutoModel freezes only the "deep core" (core - flanks). The flanks are optimized immediately (regardless of secondary structure) to resolve tension from the very beginning. This may be useful for severe clashes but risks destroying stable secondary structures in the flank.
 
 
 ---
@@ -84,9 +84,13 @@ The code is designed to receive **clean inputs**.
 
 ### 2.2. The Averaging Problem & The Replication Trick
 
-As mentioned in Section 1.4, MODELLER averages templates. To achieve a 0.0 RMSD on your experimental core, the replication trick should be used.
+As mentioned in Section 1.3, MODELLER averages templates. To achieve a 0.0 RMSD on your experimental core, the replication trick should be used.
 
-- Use **tools/replicate_template.py** to generate many copies (e.g., 1000) of your main PDB.
+- Use **RSR_INI_PRECALCULATION**:
+    - For obtainning near 0.0 RMSD respect to the experimental protein, 1000 (experimental) vs 1 (AlphaFold) weight is recommended.
+    - This would result in a problematic and long prediction. This flag provides the option of running a prediction, but stopping when .ini (average structure) and .rsr (restraints file) are generated
+    - This flag runs a precalculation (only S1 and part of the S2 stage).
+    - Next, a real structure prediction can be run with 100 (experimental) vs 1 (AlphaFold) weight, but with the .ini and .rsr files of 1000 vs 1, bringing similar outputs     
     - This ensures the experimental coordinates are not distorted by other templates (like AlphaFold models) during the initial AutoModel averaging.
     - If RMSD > 0.0 when using tools/verify_rmsd.py, the cause is likely an insufficient number of replicas.
 
@@ -130,12 +134,12 @@ python3 -c "import modeller; print(modeller.__version__)"
 ### 3.3. Directory Structure
 
 PRISM/
-├── input/                 # Input files (PDBs, FASTA, .ss2, .ali)
-├── prism/                 # The main package source code (.py)
+├── input/                 # Input files (PDBs, FASTA, .ss2, .ali, .ini, .rsr)
+├── PRISM/                 # The main package source code (.py) (capital letters)
 ├── tools/                 # Utility scripts for preparation & analysis
 ├── modeling_results/      # Default output directory
 ├── psipred_results/       # Default output from psipred_client
-└── run_prism.sh           # SLURM execution script
+└── orchestrator.py        # SLURM execution script
 
 ---
 
@@ -149,10 +153,12 @@ Place the following files in the `input/` directory:
 - **Template PDB files**: Experimental structures to use as templates
 - **`P1_NCL_secondary_structure.ss2`**(Optional): PSIPRED secondary structure prediction. Required if PERFORM_PSIPRED_PREDICTION = False.
 - **`manual_template_FullSeq.ali`** (optional): Manual alignment in PIR format
+- - **`precomputed_ini.pdb`** (optional): Precomputed average structure (.pdb / .ini)
+- - **`precomputed_rsr.rsr`** (optional): Precomputed restraint file
 
 ### 4.2. Configure Parameters
 
-Edit `prism/config.py` to set:
+Edit `PRISM/config.py` to set:
 
 ```python
 # Use the manual .ali from 'input/'? (True) or generate one automatically? (False)
@@ -197,14 +203,14 @@ python3 -m prism.controller
 
 ```bash
 # Adjust --cpus-per-task in run_prism.sh if needed
-sbatch run_prism.sh
+python3 orchestrator.py
 ```
 
 ### 4.4. Check Results
 All outputs are written to `modeling_results/`:
 
 - **`AUTO_*.pdb`**: Initial homology models (ranked by quality)
-- **`AUTO_*_LOOP*_R*.pdb`**: Loop-refined models with traceable nomenclature
+- **`AUTO_*_L*_R*.pdb`**: Loop-refined models with traceable nomenclature
 - **`final_models_ranking.csv`**: Complete ranking with DOPE-HR scores
 
 ---
@@ -219,7 +225,7 @@ All outputs are written to `modeling_results/`:
 | `NUM_MODELS_TO_REFINE` | Top models selected for loop refinement | 20 | Higher = better sampling, longer runtime |
 | `NUM_MODELS_LOOP` | Models generated per loop refinement | 48 | Should match `NUM_PROCESSORS` for efficiency |
 | `NUM_PROCESSORS` | Parallel workers | X | Set to CPU count for maximum speed |
-| `NUM_BEST_FINAL_MODELS` | Models included in final ranking | 1000 | Limits CSV output size |
+| `NUM_BEST_FINAL_MODELS` | Models included in final ranking | 1000 | Limits CSV output size | Recommended: Infinite number |
 
 ### 5.2. Experimental Region Control
 
@@ -311,9 +317,9 @@ PRISM uses systematic, traceable naming:
 | Filename Pattern | Meaning | Example |
 |-----------------|---------|---------|
 | `AUTO_N.pdb` | Initial homology model (rank N by DOPE-HR) | `AUTO_1.pdb` |
-| `AUTO_N_LOOPJ_RK.pdb` | Loop-refined model: base N, loop J, refinement K | `AUTO_1_LOOP2_R1.pdb` |
+| `AUTO_N_LJ_RK.pdb` | Loop-refined model: base N, loop J, refinement K | `AUTO_1_L2_R1.pdb` |
 
-**Reading `AUTO_1_LOOP2_R3.pdb`**:
+**Reading `AUTO_1_L2_R3.pdb`**:
 - Started from `AUTO_1.pdb` (best initial model)
 - Refined loop #2 sequentially
 - 3rd ranked refinement for that loop
@@ -329,7 +335,7 @@ PRISM uses systematic, traceable naming:
 | File | Description |
 |------|-------------|
 | `AUTO_*.pdb` | Initial homology models |
-| `AUTO_*_LOOP*_R*.pdb` | Loop-refined models |
+| `AUTO_*_L*_R*.pdb` | Loop-refined models |
 | `final_models_ranking.csv` | Complete model ranking with scores |
 | `*.ali` | Alignment files (clean and with CDE line) |
 
@@ -337,8 +343,8 @@ PRISM uses systematic, traceable naming:
 
 ```csv
 Rank,Model Name,DOPEHR Score,DOPEHR Z-score
-1,AUTO_1_LOOP3_R1.pdb,-52847.234,-1.234
-2,AUTO_2_LOOP3_R1.pdb,-52523.456,-1.156
+1,AUTO_1_L3_R1.pdb,-52847.234,-1.234
+2,AUTO_2_L3_R1.pdb,-52523.456,-1.156
 ...
 ```
 
@@ -381,58 +387,90 @@ GitHub: https://github.com/richardloopez/PRISM
 
 This directory contains all the main pipeline logic, organized as a Python package.
 
-- **`__init__.py`**: Defines the prism package, making its modules importable.
-- **`controller.py`**: Main pipeline orchestrator
-- **`psipred_client.py`**: Handles communication with the PSIPRED web server.
 - **`config.py`**: Centralized configuration management
-- **`utils.py`**: Alignment, secondary structure, and evaluation utilities
-- **`fixed_region_utils.py`**: Experimental residue identification
-- **`custom_models.py`**: Specialized FixedRegionAutoModel and FixedRegionLoopRefiner classes
-- **`homology_modeling.py`**: Parallel homology modeling execution using FixedRegionAutoModel
-- **`loop_refinement.py`**: Parallel loop refinement execution using FixedRegionLoopRefiner
-
+- **`controller.py`**: Main pipeline director
+- **`psipred_client.py`**: Handles communication with the PSIPRED web server.
+- **`utils.py`**: Environment setup, alignment processing, secondary structure parsing, loop detection,
+and model ranking
+- **`modeling_engine.py`**: Combines custom Modeller classes and execution logic for both
+homology modeling (AutoModel) and loop refinement (DOPEHRLoopModel).
+- **`orchestrator.py`**: Submits the full PRISM pipeline to the Slurm scheduler
+- 
 #### 11.1.2. Preparation and analysis toolkit (tools/)
 
-This directory contains standalone helper scripts that support the main pipeline.
-
-- **`replicate_template.py`**: Create N copies of the main PDB and returns the update of config.py and .ali files to prevent the "template averaging" problem.
-- **`verify_rmsd.py`**: Superimpose a final model onto the original template and verify that the experimental core's RMSD remains low.
-- **`test_hetatm.py`**: Analyze PDB files for ATOM vs. HETATM content, helpful when preparing PDBs with ligands or DNA/RNA.
-- **`renuamber_pdb.py`**: Renumber residues sequentially and convert specific chains (e.g., ligands) from ATOM to HETATM.
-- **`extract_results.py`**: Gather final LOOP models and .csv reports from multiple parallel job directories into a single {_processed} folder.
+This directory is a work in progress experience.
 
 
 ### 11.2. Core Innovation: Fixed-Region Selection
 
 ```python
-def select_atoms(self):
-    """Exclude experimental residues from optimization"""
-    all_residues = Selection(self).only_std_residues()
-    fixed_selection = Selection()
-    
-    for res_num in self.experimental_residues:
-        res_range = self.residue_range(f'{res_num}:{self.chain_id}', ...)
-        fixed_selection = fixed_selection | Selection(res_range)
-    
-    return all_residues - fixed_selection  # Only optimize non-experimental
+    def select_atoms(self):
+        '''
+        Select atoms for optimization, EXCLUDING experimental residues.
+        '''
+        if not self.experimental_residues:
+            return Selection(self).only_std_residues()
+        all_std = Selection(self).only_std_residues()
+        fixed_sel = Selection()
+
+        for res_num in sorted(self.experimental_residues):
+            try:
+                curr_res = self.residue_range(f'{res_num}:{self.chain_id}', f'{res_num}:{self.chain_id}')
+                fixed_sel.add(curr_res)
+            except Exception as e:
+                print(f"\n[ENVIRONMENT][FixedRegionAutoModel] Failed to select fixed residue {res_num}: {e}")
+                continue
+        
+        optimizable = all_std - fixed_sel
+        print(f"\n[ENVIRONMENT][FixedRegionAutoModel] Optimizing {len(optimizable)} atoms (Fixed: {len(self.experimental_residues)} residues)")
+        return optimizable
 ```
 
 ### 11.3. HETATM Repulsion Implementation
 
 ```python
-def nonstd_restraints(self, aln):
-    """Apply per-nucleotide repulsion shield"""
-    for het_res in hetatm_residues:
-        pseudo = pseudo_atom.GravityCenter(Selection(het_res))
-        rsr.pseudo_atoms.append(pseudo)
-        
-        for ca_atom in optimizable_ca_atoms:
+
+def add_hetatm_repulsion_shield(model, min_dist: float, only_loop_atoms: bool = False):
+    '''
+    Helper to add repulsion restraints between CA atoms and HETATM centers.
+    Shared logic between AutoModel and LoopModel.
+    '''
+    rsr = model.restraints
+
+    het_residues = [r for r in model.residues if r.hetatm and r.name != 'HOH']
+    if not het_residues:
+        return
+    
+    if only_loop_atoms:
+        target_sel = model.select_loop_atoms()
+    else:
+        target_sel = model.select_atoms()
+    
+    target_ca = target_sel.only_atom_types('CA')
+    if len(target_ca) == 0:
+        return
+
+    print(f"\n[ENVIRONMENT][add_hetatm_repulsion_shield] Adding repulsion: {len(target_ca)} CA atoms vs {len(het_residues)} HET groups.")
+
+    het_centers = []
+    for res in het_residues:
+        center = pseudo_atom.GravityCenter(Selection(res))
+        rsr.pseudo_atoms.append(center)
+        het_centers.append(center)
+    
+    count = 0
+    for ca in target_ca:
+        for center in het_centers:
             rsr.add(forms.LowerBound(
                 group=physical.xy_distance,
-                feature=features.Distance(ca_atom, pseudo),
-                mean=MIN_DIST_FROM_NUCLEOTIDE_COM,
+                feature=features.Distance(ca, center),
+                mean=min_dist,
                 stdev=1.0
             ))
+            count += 1
+        
+    print(f"\n[ENVIRONMENT][add_hetatm_repulsion_shield] Added {count} repulsion restraints (Min Dist: {min_dist}A).")
+ 
 ```
 
 ### 11.4. Parallelism and Performance
@@ -441,9 +479,9 @@ PRISM is built on MODELLER's parallel job architecture to accelerate model gener
 
 #### 11.4.1. NUM_PROCESSORS and HPC (SLURM) Configuration
 
-The NUM_PROCESSORS parameter in config.py dictates how many parallel workers MODELLER will launch. The provided run_prism.sh script correctly reads the #SBATCH --cpus-per-task value and passes it to the environment, where config.py can read it.
+The NUM_PROCESSORS parameter in config.py dictates how many parallel workers MODELLER will launch. The provided config.py script correctly DOES NOT READ the #SBATCH --cpus-per-task value from orchestrator.py.
 
-However, on modern HPC systems that use hyperthreading (e.g., 2 threads per physical core), the --cpus-per-task value can be ambiguous—it may refer to physical cores or logical cores (threads).
+On modern HPC systems that use hyperthreading (e.g., 2 threads per physical core), the --cpus-per-task value can be ambiguous—it may refer to physical cores or logical cores (threads).
 
    - **The Challenge**: A single MODELLER worker (controller.worker) is a single-threaded process. If 32 physical cores are requested (--cpus-per-task=32) on a 2-way hyperthreaded node (64 total threads) but set NUM_PROCESSORS = 32, 32 workers will be launched. The operating system will likely schedule these 32 workers on the 32 physical cores, leaving the other 32 "hyper-threads" idle and "wasting" half of the node's processing potential.
 
@@ -458,7 +496,7 @@ However, on modern HPC systems that use hyperthreading (e.g., 2 threads per phys
 
 The optimal strategy for setting the number of models differs between the initial homology modeling and the loop refinement phases.
 
-   - **NUM_MODELS_AUTO** (Homology Modeling): This number is typically large (e.g., 1000+). Because the time to generate each .pdb can vary significantly (depending on the model, thread load, etc.), and the total number of jobs is high, a precise match between NUM_MODELS_AUTO and NUM_PROCESSORS is not critical for efficiency. A large number of models will naturally balance the load across the workers.
+   - **NUM_MODELS_AUTO** (Homology Modeling): This number is typically large (e.g., 10000+). Because the time to generate each .pdb can vary significantly (depending on the model, thread load, etc.), and the total number of jobs is high, a precise match between NUM_MODELS_AUTO and NUM_PROCESSORS is not critical for efficiency. A large number of models will naturally balance the load across the workers.
 
    - **NUM_MODELS_LOOP** (Loop Refinement): This phase is a significant performance bottleneck. The number of models is small, and each one takes a long time to generate. Crucially, the PRISM controller processes loops sequentially: it must wait for all NUM_MODELS_LOOP to finish for a given base model (e.g., AUTO_1) before it can begin the next loop refinement.
 
