@@ -352,9 +352,7 @@ This repository is provided with the necessary files to run a test case (see inp
     - To test auto-alignment: Delete the .ali file from input/ and set this to False. The pipeline will generate a new .ali in modeling_results/. Check this file to see if it matches the manual one.
 
 - **Replicas & RMSD**: The test case includes only 10 replicas of the main PDB (9CB5) to keep the repository lightweight.
-    - Consequence: If you run tools/verify_rmsd.py on the results, you will see an RMSD > 0.0! This is expected.
-
-- **Publication-Ready Solution**: For a real project, use tools/replicate_template.py to generate 1000 replicas (indicative). This will ensure a low RMSD on the deep core.
+    - Consequence: If you run tools/verify_rmsd.py on the results, you will see an RMSD > 0.0! This is expected. (work in progress code).
 
 - **Template Selection**: All experimental PDBs for this protein were used, except 2KRR.
     - Reason: 2KRR almost completely overlaps with 9CB5 (the main PDB). Since 9CB5 is ligand-bound and may be slightly deformed, we do not want the apo 2KRR structure to distort its coordinates during the initial averaging step.
