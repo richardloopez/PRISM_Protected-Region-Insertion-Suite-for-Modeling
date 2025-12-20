@@ -540,8 +540,9 @@ PSIPRED secondary structure predictions: Jones, D.T. (1999) J. Mol. Biol. 292: 1
 This repository is configured to provide a "ready-to-run" demo experience:
 1. Clone & Position: Copy this repository to your desired location on your HPC cluster.
 2. Environment Setup: Open orchestrator.py and update the MOD_PYTHON_CMD variable to point to your local MODELLER modpy.sh path.
-3. Run the Demo: Execute the pipeline by running:
+3. Create a folder named "logs/" at the same level as the "input/" and "prism/" directories (i.e., as a sibling directory to both).
+4. Run the Demo: Execute the pipeline by running:
 ```Bash
 python3 orchestrator.py
 ```
-4. What’s Included: The input/ directory already contains all necessary PDBs, FASTA, .ss2, and alignment files for a test case. The config.py is pre-set to run a shortened version of the pipeline (low replica count) to demonstrate the workflow immediately.
+5. What’s Included: The input/ directory already contains all necessary PDBs, FASTA, .ss2, and alignment files for a test case. The config.py is pre-set to run a shortened version of the pipeline (low replica count) to demonstrate the workflow immediately.
