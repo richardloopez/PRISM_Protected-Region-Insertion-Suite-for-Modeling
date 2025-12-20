@@ -19,7 +19,7 @@ The pipeline enables high-fidelity modeling of loop insertions and flexible regi
 - **🧬 HETATM Repulsion Shields**: Per-nucleotide repulsion prevents loop clashes with bound molecules (DNA/RNA/ligands)
 - **⚡ Parallel Processing**: Full support for multi-processor execution via MODELLER's parallel framework
 - **🔮 Automatic PSIPRED Prediction**: Integrates a client (psipred_client.py) to automatically submit, poll, and download secondary structure predictions from the PSIPRED web server.
-- **📊 Traceable Nomenclature**: Models are systematically named (e.g., `AUTO_1_L2_R1.pdb`) for complete traceability
+- **📊 Traceable Nomenclature**: Models are systematically named (e.g., `AUTO_1_LOOP2_R1.pdb`) for complete traceability
 - **🚀 HPC-Ready**: Includes an orchestrator.py script for easy submission to SLURM queuing systems.
 - **🔬 Advanced Flank Control**: Granular user control over the behavior of experimental flanks (the junction between fixed and modeled regions) using EXPERIMENTAL_FLANK_SIZE and REFINE_FLANKS_DURING_AUTOMODEL flags.
 - **🎯 Smart Loop Detection**: Combines PSIPRED secondary structure predictions with experimental boundary analysis
@@ -217,7 +217,7 @@ python3 orchestrator.py
 All outputs are written to `modeling_results/`:
 
 - **`AUTO_*.pdb`**: Initial homology models (ranked by quality)
-- **`AUTO_*_L*_R*.pdb`**: Loop-refined models with traceable nomenclature
+- **`AUTO_*_LOOP*_R*.pdb`**: Loop-refined models with traceable nomenclature
 - **`final_models_ranking.csv`**: Complete ranking with DOPE-HR scores
 
 ---
@@ -296,7 +296,7 @@ All outputs are written to `modeling_results/`:
 │ • Refines detected coil regions on best AutoModels      │
 │ • FixedRegionLoopModel maintains core/template stability│
 │ • Sequential refinement per loop per model              │
-│ • Nomenclature: AUTO_1_L1_R1.pdb                     │
+│ • Nomenclature: AUTO_1_LOOP1_R1.pdb                     │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -316,9 +316,9 @@ PRISM uses systematic, traceable naming:
 | Filename Pattern | Meaning | Example |
 |-----------------|---------|---------|
 | `AUTO_N.pdb` | Initial homology model (rank N by DOPE-HR) | `AUTO_1.pdb` |
-| `AUTO_N_LJ_RK.pdb` | Loop-refined model: base N, loop J, refinement K | `AUTO_1_L2_R1.pdb` |
+| `AUTO_N_LOOPJ_RK.pdb` | Loop-refined model: base N, loop J, refinement K | `AUTO_1_LOOP2_R1.pdb` |
 
-**Reading `AUTO_1_L2_R3.pdb`**:
+**Reading `AUTO_1_LOOP2_R3.pdb`**:
 - Started from `AUTO_1.pdb` (best initial model)
 - Refined loop #2 sequentially
 - 3rd ranked refinement for that loop
@@ -334,7 +334,7 @@ PRISM uses systematic, traceable naming:
 | File | Description |
 |------|-------------|
 | `AUTO_*.pdb` | Initial homology models |
-| `AUTO_*_L*_R*.pdb` | Loop-refined models |
+| `AUTO_*_LOOP*_R*.pdb` | Loop-refined models |
 | `final_models_ranking.csv` | Complete model ranking with scores |
 | `*.ali` | Alignment files (clean and with CDE line) |
 
@@ -342,8 +342,8 @@ PRISM uses systematic, traceable naming:
 
 ```csv
 Rank,Model Name,DOPEHR Score,DOPEHR Z-score
-1,AUTO_1_L3_R1.pdb,-52847.234,-1.234
-2,AUTO_2_L3_R1.pdb,-52523.456,-1.156
+1,AUTO_1_LOOP3_R1.pdb,-52847.234,-1.234
+2,AUTO_2_LOOP3_R1.pdb,-52523.456,-1.156
 ...
 ```
 
