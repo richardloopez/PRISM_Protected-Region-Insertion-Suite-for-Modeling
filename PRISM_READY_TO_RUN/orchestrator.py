@@ -42,7 +42,7 @@ LOG_DIR = os.path.join(PROJECT_ROOT, "logs")
 
 # Define the MODELLER execution command
 PYTHON_EXE = shutil.which("python3")
-MOD_PYTHON_CMD = f"/home/richard/bin/modeller10.7/bin/modpy.sh {PYTHON_EXE}"
+MOD_PYTHON_CMD = f"{PYTHON_EXE}"
 
 # Ensure directories exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -77,7 +77,7 @@ def submit_slurm_job(job_name, command_str, dep_job_id=None, array_range=None,
     if array_range:
         sbatch_args.append(f"--array={array_range}")
 
-    wrapped_cmd = f"export PYTHONPATH={PROJECT_ROOT}:${{PYTHONPATH}}; {command_str}"
+    wrapped_cmd = f"export PYTHONPATH={PROJECT_ROOT}; {command_str}"
     sbatch_args.append(f"--wrap={wrapped_cmd}")
 
     print(f"\n[ORCHESTRATOR] Submitting {job_name}...")
@@ -233,4 +233,5 @@ def main():
     print("="*60)
 
 if __name__ == "__main__":
+
     main()
