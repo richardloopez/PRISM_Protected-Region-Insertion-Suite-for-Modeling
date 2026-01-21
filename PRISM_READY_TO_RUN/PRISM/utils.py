@@ -142,36 +142,67 @@ def run_prerequisites(env: Environ) -> Tuple[str, List[Tuple[int, int]], Set[int
     
     print(f"\n[ENVIRONMENT] Loop detection\n{'='*80}\n")
     try:
-        all_coil = get_coil_residues(config.SS2_FILE_PATH, config.get_sequence())
-        experimental_ranges = group_ranges(list(experimental_residues))
-        flank_residues = set()
-        N = config.EXPERIMENTAL_FLANK_SIZE
-
-        for start, end in experimental_ranges:
-            for i in range(N):
-                if start + i <= end: flank_residues.add(start + i)
-            for i in range(N):
-                if end - i >= start: flank_residues.add(end - i)
-        truly_fixed_residues = experimental_residues - flank_residues
-        refinable_residues = all_coil - truly_fixed_residues
-        loop_ranges = group_ranges(list(refinable_residues))
-
-        if config.REFINE_FLANKS_DURING_AUTOMODEL:
+        # MANUAL OVERRIDE MODE
+        if config.USE_MANUAL_OPTIMIZATION_SELECTION:
+            print(f"[MANUAL_MODE] Flag USE_MANUAL_OPTIMIZATION_SELECTION is True.")
+            print(f"[MANUAL_MODE] Ignoring automatic flank detection and SS2 coil detection.")
+            
+            manual_list = set(config.MANUAL_OPTIMIZATION_RESIDUES)
+            truly_fixed_residues = experimental_residues - manual_list
+            loop_ranges = group_ranges(list(manual_list))
             automodel_fixed = truly_fixed_residues
-            print(f"\n[ENVIRONMENT] Refining flanks during automodeling\n{'='*80}\n")
-            print(f"  > Fixed residues: {automodel_fixed}")
+            
+            print(f"[MANUAL_MODE] User selected {len(manual_list)} residues to optimize.")
+            print(f"[MANUAL_MODE] Resulting Fixed Residues: {len(truly_fixed_residues)}")
+
+        # AUTOMATIC DETECTION MODE
         else:
-            automodel_fixed = experimental_residues
-            print(f"\n[ENVIRONMENT] Not refining flanks during automodeling\n{'='*80}\n")
-            print(f"  > Fixed residues: {automodel_fixed}")
-        
+            print(f"[AUTO_MODE] Running automatic detection with connectivity checks.")
+            
+            full_seq_str = config.get_sequence()
+            MAX_LEN = len(full_seq_str)
+
+            if experimental_residues:
+                last_experimental_res = max(experimental_residues)
+            else:
+                last_experimental_res = MAX_LEN
+
+            all_coil = get_coil_residues(config.SS2_FILE_PATH, full_seq_str)
+            experimental_ranges = group_ranges(list(experimental_residues))
+            flank_residues = set()
+            N = config.EXPERIMENTAL_FLANK_SIZE
+
+            for start, end in experimental_ranges:
+                if start > 1:
+                    for i in range(N):
+                        if start + i <= end: flank_residues.add(start + i)
+                
+                if end < last_experimental_res:
+                    for i in range(N):
+                        if end - i >= start: flank_residues.add(end - i)
+
+            truly_fixed_residues = experimental_residues - flank_residues
+            refinable_residues = all_coil - truly_fixed_residues
+            loop_ranges = group_ranges(list(refinable_residues))
+
+            if config.REFINE_FLANKS_DURING_AUTOMODEL:
+                automodel_fixed = truly_fixed_residues
+                print(f"  > Fixed residues (Auto): {len(automodel_fixed)}")
+            else:
+                automodel_fixed = experimental_residues
+                print(f"  > Fixed residues (Exp Only): {len(automodel_fixed)}")
+
+        # OUTPUT SUMMARY
         ranges_str = [f"[{s}-{e}]" for s, e in loop_ranges]
-        print(f"\n[ENVIRONMENT] Detected coil regions from SS2 (Candidates for refinement): {', '.join(ranges_str)}")
+        if not ranges_str:
+            print(f"\n[ENVIRONMENT] No regions selected for optimization.")
+        else:
+            print(f"\n[ENVIRONMENT] Regions selected for optimization: {', '.join(ranges_str)}")
 
         return ali_file_automodel, loop_ranges, truly_fixed_residues, automodel_fixed
     
     except Exception as e:
-        print(f"\n[ENVIRONMENT] Loop detection failed: {e}")
+        print(f"\n[ENVIRONMENT] Region detection failed: {e}")
         sys.exit(1)
 
 
