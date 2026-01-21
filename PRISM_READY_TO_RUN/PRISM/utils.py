@@ -159,7 +159,8 @@ def run_prerequisites(env: Environ) -> Tuple[str, List[Tuple[int, int]], Set[int
         else:
             print(f"[AUTO_MODE] Running automatic detection with connectivity checks.")
             
-            full_seq_str = config.get_sequence()
+            raw_seq_str = config.get_sequence()
+            full_seq_str = re.sub(r'[^A-Z]', '', raw_seq_str.upper())
             MAX_LEN = len(full_seq_str)
 
             if experimental_residues:
@@ -177,7 +178,7 @@ def run_prerequisites(env: Environ) -> Tuple[str, List[Tuple[int, int]], Set[int
                     for i in range(N):
                         if start + i <= end: flank_residues.add(start + i)
                 
-                if end < last_experimental_res:
+                if end < MAX_LEN:
                     for i in range(N):
                         if end - i >= start: flank_residues.add(end - i)
 
