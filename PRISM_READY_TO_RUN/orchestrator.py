@@ -27,8 +27,8 @@ if current_dir not in sys.path:
 
 try:
     from PRISM import config
-except ImportError:
-    print("[ORCHESTRATOR][FATAL] Could not import PRISM.config. Run this script from the project root.")
+except ImportError as e:
+    print(f"[ORCHESTRATOR][FATAL] Could not import PRISM.config: {e}")
     sys.exit(1)
 
 # =============================================================================
@@ -235,3 +235,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
