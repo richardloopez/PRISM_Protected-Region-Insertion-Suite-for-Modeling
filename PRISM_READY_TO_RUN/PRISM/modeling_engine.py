@@ -177,21 +177,21 @@ def run_automodel(env: Environ, align_file: str, job: Job,
     print(f"\n[ENVIRONMENT][run_automodel] (Freezing residues: {residues_to_freeze})")
     print(f"\n{'='*80}")
 
-    if config.RSR_INI_PRECALCULATION:
+    if config.INPUT_MODE == 'precalculation':
         print(f"\n[ENVIRONMENT][run_automodel] PRECALCULATION MODE: Ignoring precomputed inputs to generate fresh ones.")
         extra_inputs = {}
 
-    if config.USE_PRECOMPUTED_FILES:
+    elif config.INPUT_MODE == 'precomputed':
         print(f"\n[ENVIRONMENT][run_automodel] Using precomputed files.")
         print(f"\n[ENVIRONMENT][run_automodel] (Precomputed files: {config.CUSTOM_INIFILE_PATH}, {config.CUSTOM_RSRFILE_PATH})")
         extra_inputs = {
             'inifile': config.CUSTOM_INIFILE_PATH,
             'csrfile': config.CUSTOM_RSRFILE_PATH
         }
-    else:
-        print(f"\n[ENVIRONMENT][run_automodel] Not using precomputed files.")
+    elif config.INPUT_MODE == 'normal':
+        print(f"\n[ENVIRONMENT][run_automodel] Not using precomputed files (generating inputs as usual).")
         extra_inputs = {}
-
+        
     a = FixedRegionAutoModel(env,
                             experimental_residues=residues_to_freeze,
                             chain_id=config.CHAIN_ID,
@@ -331,6 +331,7 @@ def run_loop_model(env: Environ, job: Job, initial_models_names: List[str],
                 continue
             
             print(f"\n[ENVIRONMENT][run_loop_model] Loop refinement for model {model_idx+1} completed.")
+
 
 
 
