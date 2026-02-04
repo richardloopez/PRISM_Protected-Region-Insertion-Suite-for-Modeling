@@ -208,7 +208,7 @@ def run_automodel(env: Environ, align_file: str, job: Job,
     a.library_schedule = autosched.slow
     a.max_var_iterations = 1000
     
-    if config.RSR_INI_PRECALCULATION:
+    if config.INPUT_MODE == "precalculation": 
         print(f"\n[ENVIRONMENT][run_automodel] running in PRECALCULATION mode (exit_stage=1).")
         a.make(exit_stage=1)
 
@@ -331,6 +331,7 @@ def run_loop_model(env: Environ, job: Job, initial_models_names: List[str],
                 continue
             
             print(f"\n[ENVIRONMENT][run_loop_model] Loop refinement for model {model_idx+1} completed.")
+
 
 
 
