@@ -107,7 +107,7 @@ def main():
     print("-" * 60)
 
     # --- PRECALCULATION? ---
-    if config.RSR_INI_PRECALCULATION:
+    if config.INPUT_MODE == "precalculation": 
         print("\n[ORCHESTRATOR] Running in PRECALCULATION mode.")    
 
     # --- STAGE 1: Prereq-CDE ---
@@ -126,7 +126,7 @@ def main():
     # Generates initial models in parallel
 
     # ----- RSR_INI_PRECALCULATION MODE -----
-    if config.RSR_INI_PRECALCULATION:
+    if config.INPUT_MODE == "precalculation": 
         print("\n[ORCHESTRATOR] Precalculation active: Submitting S2 as a single task.")
         cmd_s2 = (
             f'TASK_DIR="{RESULTS_DIR}/precalc_task"; '
@@ -235,4 +235,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
