@@ -32,6 +32,7 @@ from typing import List
 # File paths
 ALIGN_CODE_SEQUENCE = 'FullSeq'
 CHAIN_ID = 'A'
+BLK_CHAIN_ID = 'B'
 CUSTOM_INIFILE_BASENAME = 'precomputed_ini.pdb'
 CUSTOM_RSRFILE_BASENAME = 'precomputed_rsr.rsr'
 FASTA_FILE_BASENAME = 'sequence_full.fasta'
@@ -187,5 +188,6 @@ __all__ = [
     'ALIGNMENT_FILE', 'ALIGNMENT_CDE_FILE', 'FINAL_RANKING_CSV'
 
 ]
+
 
 
