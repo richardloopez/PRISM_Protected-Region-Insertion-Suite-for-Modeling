@@ -14,6 +14,7 @@ homology modeling (AutoModel) and loop refinement (DOPEHRLoopModel).
 import os 
 import shutil
 from typing import List, Tuple, Set, Dict, Any, Union
+import re
 
 from modeller import *
 from modeller.automodel import *
@@ -33,38 +34,75 @@ class FixedRegionAutoModel(AutoModel):
     Applies per-residue repulsion shields to avoid clashes with heteroatoms.
     '''
     DEFAULT_CHAIN = config.CHAIN_ID
-    def __init__(self, env, experimental_residues: Set[int], chain_id: str = DEFAULT_CHAIN, **kwargs):
+    def __init__(self, env, experimental_residues: Set[int], chain_id: str = DEFAULT_CHAIN, blk_chain_id: str = config.BLK_CHAIN_ID, **kwargs):
         '''
         Initialize the FixedRegionAutoModel class.
         '''
         super().__init__(env, **kwargs)
         self.experimental_residues = experimental_residues
         self.chain_id = chain_id
-        print(f"\n[ENVIRONMENT][FixedRegionAutoModel] Initialized with Experimental FIXED residues: {self.experimental_residues}")
+        self.blk_chain_id = blk_chain_id
     
 
     def select_atoms(self):
         '''
-        Select atoms for optimization, EXCLUDING experimental residues.
+        Select atoms for optimization, EXCLUDING experimental residues and BLK.
         '''
-        if not self.experimental_residues:
-            return Selection(self).only_std_residues()
-        all_std = Selection(self).only_std_residues()
-        fixed_sel = Selection()
+        all_atoms = Selection(self)
+        fixed_selection_protein = Selection()
+        fixed_selection_blk = Selection()
 
-        for res_num in sorted(self.experimental_residues):
+        if self.experimental_residues:
+            for res_num in sorted(self.experimental_residues):
+                try:
+                    curr_res = self.residue_range(f'{res_num}:{self.chain_id}', f'{res_num}:{self.chain_id}')
+                    fixed_selection_protein.add(curr_res)
+                except Exception as e:
+                    print(f"\n[ENVIRONMENT][FixedRegionAutoModel] Failed to select fixed residue {res_num}: {e}")
+                    continue
+        if self.blk_chain_id is not None:
             try:
-                curr_res = self.residue_range(f'{res_num}:{self.chain_id}', f'{res_num}:{self.chain_id}')
-                fixed_sel.add(curr_res)
+                blk_chain_selection = Selection(self.chains[self.blk_chain_id])
+                fixed_selection_blk.add(blk_chain_selection)
             except Exception as e:
-                print(f"\n[ENVIRONMENT][FixedRegionAutoModel] Failed to select fixed residue {res_num}: {e}")
-                continue
+                print(f"\n[ENVIRONMENT][FixedRegionAutoModel] Failed to select BLK chain {self.blk_chain_id}: {e}")
+
+        optimizable = all_atoms - fixed_selection_protein - fixed_selection_blk
+        print(f"\n[ENVIRONMENT][FixedRegionAutoModel] Optimizing {len(optimizable)} atoms (Fixed Protein: {len(fixed_selection_protein)} atoms, BLK: {len(fixed_selection_blk)} atoms)")
         
-        optimizable = all_std - fixed_sel
-        print(f"\n[ENVIRONMENT][FixedRegionAutoModel] Optimizing {len(optimizable)} atoms (Fixed: {len(self.experimental_residues)} residues)")
+    
+        def get_residue_list(selection):
+            residues = []
+            seen = set()
+            for atom in selection:
+                atom_str = str(atom)
+                atom, atom_name, res_num, chain_id = re.split(r'[: ]+', atom_str)
+                if res_num not in seen:
+                    seen.add(res_num)
+                    residues.append({
+                        "res_num": res_num
+                    })
+            return residues
+        fixed_prot_ids = get_residue_list(fixed_selection_protein)
+        fixed_blk_ids = get_residue_list(fixed_selection_blk)
+        optimizable_ids = get_residue_list(optimizable)
+        print("\n" + "="*80)
+        print("          PRISM OPTIMIZATION SELECTION REPORT ([ENVIRONMENT][FixedRegionAutoModel])")
+        print("="*80)
+        
+        print(f"\n[FROZEN] Fixed Protein Residues (Chain: {self.chain_id}) (Total: {len(fixed_prot_ids)}):")
+        print(f" > {', '.join(item['res_num'] for item in fixed_prot_ids)}")
+
+        print(f"\n[FROZEN] Fixed BLK/HETATM Residues (Chain: {self.blk_chain_id}) (Total: {len(fixed_blk_ids)}):")
+        print(f" > {', '.join(item['res_num'] for item in fixed_blk_ids)}")
+
+        print(f"\n[MOBILE] Optimizable Residues (Chain: {self.chain_id}) (Total: {len(optimizable_ids)}):")
+        print(f" > {', '.join(item['res_num'] for item in optimizable_ids)}")
+
+
         return optimizable
-    
-    
+
+
     def nonstd_restraints(self, aln):
         '''
         Add HETATM repulsion shield restraints.
@@ -331,6 +369,7 @@ def run_loop_model(env: Environ, job: Job, initial_models_names: List[str],
                 continue
             
             print(f"\n[ENVIRONMENT][run_loop_model] Loop refinement for model {model_idx+1} completed.")
+
 
 
 
