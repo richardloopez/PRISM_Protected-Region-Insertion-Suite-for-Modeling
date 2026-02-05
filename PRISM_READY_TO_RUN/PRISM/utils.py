@@ -278,7 +278,7 @@ def read_ss2_file(ss2_path: Union[str, Path], seq_full: str) -> str:
 
     if len_ss < len_seq:
         missing = len_seq - len_ss
-        if seq_full[len_ss:].strip('.'):
+        if seq_full[len_ss:].strip('./'):
             raise ValueError(f"SS2 too short (SS2: {len_ss}, Sequence   : {len_seq}) and missing part contains residues.")
 
         print(f"[SS2] Padding short SS2 with {missing} '.' characters.")
@@ -629,4 +629,5 @@ def final_evaluation_and_ranking(env) -> Tuple[List[Dict[str, Any]], Dict[str, A
 
 
     
+
 
