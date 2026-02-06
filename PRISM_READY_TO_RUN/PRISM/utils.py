@@ -608,7 +608,9 @@ def final_evaluation_and_ranking(env) -> Tuple[List[Dict[str, Any]], Dict[str, A
                 'DOPEHR_zscore': float('inf')
             })
     results.sort(key=lambda x: x['DOPEHR_score'])
-    best_models = results[:config.NUM_BEST_FINAL_MODELS]
+    val = config.NUM_BEST_FINAL_MODELS
+    limit = None if (val == 'inf' or val == float('inf') or val is None) else int(val)
+    best_models = results[:limit]
 
     try: 
         with open (config.FINAL_RANKING_CSV, 'w', newline='') as f:
