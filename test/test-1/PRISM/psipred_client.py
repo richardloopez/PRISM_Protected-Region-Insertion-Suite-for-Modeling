@@ -115,11 +115,23 @@ def download_results(status_data: Dict[str, Any], output_dir: Path) -> Optional[
         raise RuntimeError("No results found in status data")
     
     data_paths = [r['data_path'] for r in results_list if 'data_path' in r]
-    local_path.write_bytes(r.content)
-    logger.info(f"Downloaded {filename} to {local_path}")
+    print(f"\n[PSIPRED] Downloading {len(data_paths)} files to {output_dir}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    downloaded_ss2 = None
+
+    for path_fragment in data_paths:
+        filename = Path(path_fragment).name
+        url = URL_DOWNLOAD_BASE + filename
+        local_path = output_dir / filename
+
+        r = requests.get(url)
+        r.raise_for_status()
+        local_path.write_bytes(r.content)
+        print(f"[PSIPRED] Downloaded {filename} to {local_path}")
             
-    if filename.endswith('.ss2'):
-        downloaded_ss2 = local_path
+        if filename.endswith('.ss2'):
+            downloaded_ss2 = local_path
             
     return downloaded_ss2
 
