@@ -1,0 +1,62 @@
+# ========================================================================================
+# PRISM Environment & Dependency Manager (Pixi)
+# ========================================================================================
+# This file manages the Python environment, MODELLER installation, and task automation.
+# ========================================================================================
+
+[workspace]
+name = "PRISM"
+version = "1.0.0"
+description = "Protected-Region Insertion Suite for Modeling"
+authors = ["Richard Lopez Corbalan"]
+channels = ["conda-forge", "bioconda", "salilab"]
+platforms = ["linux-64", "osx-64"] 
+
+[dependencies]
+python = ">=3.10"
+modeller = ">=10.5"
+pydantic = "*"
+email-validator = ">=2.0.0"
+pyyaml = "*"
+requests = "*"
+nextflow = ">=23.10"
+streamlit = "*"
+pandas = "*"
+py3dmol = "*"
+plotly = "*"
+
+
+
+[activation.env]
+# Modeller license (automatic activation)
+KEY_MODELLER = "MODELIRANJE"
+
+[tasks]
+setup = """
+python -c "
+import os; 
+from pathlib import Path; 
+k=os.environ.get('KEY_MODELLER', 'MODELIRANJE'); 
+prefix=os.environ['CONDA_PREFIX'];
+p=next(Path(prefix).rglob('modeller/config.py'), None); 
+if p:
+    c = p.read_text();
+    if 'XXXX' in c:
+        p.write_text(c.replace('XXXX', k)); 
+        print(f'License applied! Key: {k}')
+    else:
+        print('License already applied or XXXX not found.')
+else:
+    print('Modeller config.py not found in environment.')
+"
+"""
+gui-prism = { cmd = "streamlit run PRISM_Dashboard.py", depends-on = ["setup"] }
+gui-prism-persist = { cmd = "bash -c 'nohup streamlit run PRISM_Dashboard.py > .prism-gui.log 2>&1 & echo $! > .prism-gui.pid && echo \"🛡️ GUI launched in background (PID: $(cat .prism-gui.pid))\"'", depends-on = ["setup"] }
+terminal-prism = { cmd = "nextflow run orchestrator.nf", depends-on = ["setup"] }
+terminal-prism-persist = { cmd = "bash -c 'nohup nextflow run orchestrator.nf > .prism-cli.log 2>&1 & echo $! > .prism-cli.pid && echo \"🛡️ Pipeline launched in background (PID: $(cat .prism-cli.pid))\"'", depends-on = ["setup"] }
+attach-gui = { cmd = "tail -f .prism-gui.log" }
+attach-terminal = { cmd = "tail -f .prism-cli.log" }
+stop-gui = { cmd = "bash -c 'kill $(cat .prism-gui.pid) && rm .prism-gui.pid && echo \"GUI stopped.\"'" }
+stop-terminal = { cmd = "bash -c 'kill $(cat .prism-cli.pid) && rm .prism-cli.pid && echo \"Pipeline stopped.\"'" }
+# Legacy alias for backward compatibility
+prism = { depends-on = ["terminal-prism"] }
