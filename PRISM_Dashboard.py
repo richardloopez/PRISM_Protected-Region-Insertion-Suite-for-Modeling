@@ -144,6 +144,17 @@ with tab_config:
         else:
             opt_res_str = ""
 
+        col_fix1, col_fix2 = st.columns([1, 1])
+        with col_fix1:
+            manual_fix = st.toggle("USE_MANUAL_FIXATION_SELECTION", value=st.session_state.config.USE_MANUAL_FIXATION_SELECTION)
+        
+        if manual_fix:
+            fix_res_str = st.text_area("MANUAL_FIXATION_RESIDUES (Space separated)", 
+                                     value=" ".join(map(str, st.session_state.config.MANUAL_FIXATION_RESIDUES)),
+                                     help="Add residue numbers to FORCE FIXation. These will be treated as experimental residues.")
+        else:
+            fix_res_str = ""
+
     # Group 4: Execution Engine
     with st.container(border=True):
         st.subheader("💻 Execution Engine")
@@ -212,9 +223,11 @@ with tab_config:
                 st.session_state.config.MODELLER_CORES = modeller_cores
                 st.session_state.config.TOTAL_PARALLEL_JOBS = parallel_jobs
                 st.session_state.config.USE_MANUAL_OPTIMIZATION_SELECTION = manual_opt
+                st.session_state.config.USE_MANUAL_FIXATION_SELECTION = manual_fix
                 
                 # Update complex params
                 st.session_state.config.MANUAL_OPTIMIZATION_RESIDUES = [int(r) for r in opt_res_str.split()] if opt_res_str else []
+                st.session_state.config.MANUAL_FIXATION_RESIDUES = [int(r) for r in fix_res_str.split()] if fix_res_str else []
                 st.session_state.config.PDB_TEMPLATE_FILES_NAMES = [n.strip() for n in pdb_names_str.split("\n") if n.strip()]
                 
                 if paradigm == "prism-power":
