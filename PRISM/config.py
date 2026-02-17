@@ -67,6 +67,8 @@ class PrismConfig(BaseModel):
     EXECUTION_PARADIGM: Literal["precalculation", "precomputed", "normal", "prism-power"]
     USE_MANUAL_OPTIMIZATION_SELECTION: bool
     MANUAL_OPTIMIZATION_RESIDUES: List[int]
+    USE_MANUAL_FIXATION_SELECTION: bool
+    MANUAL_FIXATION_RESIDUES: List[int]
     
 
     # Templates: First one is the main template
