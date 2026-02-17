@@ -492,6 +492,15 @@ def identify_experimental_residues(aligned_template_seq: str, aligned_target_seq
         if template_res != '-' and target_res != '-':
             experimental_residues.add(target_res_num)
     
+    if config.USE_MANUAL_FIXATION_SELECTION:
+        logger.info("[MANUAL_FIXATION] Flag USE_MANUAL_FIXATION_SELECTION is True.")
+        manual_fix = set(config.MANUAL_FIXATION_RESIDUES)
+        if manual_fix:
+            logger.info(f"[MANUAL_FIXATION] Adding {len(manual_fix)} user-specified residues to fixed set: {sorted(list(manual_fix))}")
+            experimental_residues.update(manual_fix)
+        else:
+            logger.warning("[MANUAL_FIXATION] Flag is True but MANUAL_FIXATION_RESIDUES list is empty.")
+
     logger.info(f"[FIXED_REGION] Identified {len(experimental_residues)} experimental residues mapped from template")
     logger.info("[FIXED_REGION] These residues will NOT be optimized or refined (unless flank size takes them)")
 
