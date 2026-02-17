@@ -335,6 +335,8 @@ All parameters are set in `config.yaml` (or via the Dashboard).
 | `BLOCK_REPULSION_RADIUS` | Min C-alpha to HETATM distance (Å) | `5.0` | Lower = tighter packing |
 | `USE_MANUAL_OPTIMIZATION_SELECTION` | Manually specify residues to optimize | `false` | Overrides automatic detection |
 | `MANUAL_OPTIMIZATION_RESIDUES` | List of residue indices to optimize | `[]` | Only used when above is `true` |
+| `USE_MANUAL_FIXATION_SELECTION` | Manually specify residues to FIX (treat as experimental) | `false` | Adds to the set of fixed residues |
+| `MANUAL_FIXATION_RESIDUES` | List of residue indices to fix | `[]` | Only used when above is `true` |
 
 ### 7.4. Chain & File Configuration
 
