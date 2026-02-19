@@ -60,9 +60,12 @@ class FixedRegionAutoModel(AutoModel):
             for res_num in sorted(self.experimental_residues):
                 curr_res = self.residue_range(f'{res_num}:{self.chain_id}', f'{res_num}:{self.chain_id}')
                 fixed_selection_protein.add(curr_res)
-        if self.blk_chain_id is not None:
-            blk_chain_selection = Selection(self.chains[self.blk_chain_id])
-            fixed_selection_blk.add(blk_chain_selection)
+        if self.blk_chain_id and str(self.blk_chain_id).lower() not in ('none', 'null'):
+            try:
+                blk_chain_selection = Selection(self.chains[self.blk_chain_id])
+                fixed_selection_blk.add(blk_chain_selection)
+            except KeyError:
+                logger.warning(f"[ENVIRONMENT][FixedRegionAutoModel] BLK chain '{self.blk_chain_id}' not found in model. Skipping BLK fixation.")
 
         optimizable = all_atoms - fixed_selection_protein - fixed_selection_blk
         logger.info(f"[ENVIRONMENT][FixedRegionAutoModel] Optimizing {len(optimizable)} atoms (Fixed Protein: {len(fixed_selection_protein)} atoms, BLK: {len(fixed_selection_blk)} atoms)")
@@ -88,7 +91,10 @@ class FixedRegionAutoModel(AutoModel):
         logger.info("PRISM OPTIMIZATION SELECTION REPORT ([ENVIRONMENT][FixedRegionAutoModel])")
         ("\n" + "="*80)
         logger.info(f"Frozen Protein Residues (Chain: {self.chain_id}) (Total: {len(fixed_prot_ids)}): {', '.join(item['res_num'] for item in fixed_prot_ids)}")
-        logger.info(f"Frozen BLK/HETATM Residues (Chain: {self.blk_chain_id}) (Total: {len(fixed_blk_ids)}): {', '.join(item['res_num'] for item in fixed_blk_ids)}")
+        if fixed_blk_ids:
+            logger.info(f"Frozen BLK/HETATM Residues (Chain: {self.blk_chain_id}) (Total: {len(fixed_blk_ids)}): {', '.join(item['res_num'] for item in fixed_blk_ids)}")
+        else:
+            logger.info(f"Frozen BLK/HETATM Residues: None")
         logger.info(f"Mobile Optimizable Residues (Chain: {self.chain_id}) (Total: {len(optimizable_ids)}): {', '.join(item['res_num'] for item in optimizable_ids)}")
 
         return optimizable
