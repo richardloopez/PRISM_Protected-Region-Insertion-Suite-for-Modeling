@@ -103,17 +103,16 @@ def renumber_pdb(pdb_path: str, residues_to_keep: Set[int], output_path: str):
     if protein_atoms:
         new_lines.append("TER")
     
-    # 2. Renumber BLK (Continuing from new_res_seq of the last protein residue)
+    # 2. Renumber BLK
     last_old_res_id = None
-    # last_chain_id is kept from the last protein atom to trigger TER if needed
     for atom in blk_atoms:
         if last_chain_id is not None and atom.chain_id != last_chain_id:
             new_lines.append("TER")
-            last_old_res_id = None # Trigger numbering increment
+            last_old_res_id = None
             
         old_res_id = (atom.chain_id, atom.res_seq, atom.i_code)
         if old_res_id != last_old_res_id:
-            new_res_seq += 1 # CONTINUOUS numbering
+            new_res_seq += 1
             last_old_res_id = old_res_id
         
         atom.serial = serial
@@ -241,7 +240,6 @@ def unify_templates(align_file: str, overlap_limit: int):
             orig_pdb = f"{temp.code.strip()}.pdb"
             
         if os.path.exists(orig_pdb):
-            # Strip .pdb from the end if it exists. strip() handles potential Modeller padding.
             output_pdb = f"{temp.code.split('.')[0]}_unified.pdb"
             
             renumber_pdb(orig_pdb, residues_to_keep, output_pdb)
@@ -265,13 +263,7 @@ def unify_templates(align_file: str, overlap_limit: int):
                 else:
                     pass
             elif current_code in new_sequences and line.startswith(('structure', 'sequence')):
-                if 'unified' not in line:
-                    parts = line.split(':')
-                    if len(parts) > 3:
-                        parts[3] = f"{current_code}_unified.pdb"
-                    f_out.write(":".join(parts))
-                else:
-                    f_out.write(line)
+                f_out.write(line)
             else:
                 f_out.write(line)
 
