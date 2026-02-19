@@ -40,7 +40,7 @@ class PrismConfig(BaseModel):
     # Filenames (only basenames)
     ALIGN_CODE_SEQUENCE: str
     CHAIN_ID: str
-    BLK_CHAIN_ID: str
+    BLK_CHAIN_ID: Optional[str] = None
     CUSTOM_INIFILE_BASENAME: str
     CUSTOM_RSRFILE_BASENAME: str
     FASTA_FILE_BASENAME: str
