@@ -54,6 +54,7 @@ gui-prism = { cmd = "streamlit run PRISM_Dashboard.py", depends-on = ["setup"] }
 gui-prism-persist = { cmd = "bash -c 'nohup streamlit run PRISM_Dashboard.py > .prism-gui.log 2>&1 & echo $! > .prism-gui.pid && echo \"🛡️ GUI launched in background (PID: $(cat .prism-gui.pid))\"'", depends-on = ["setup"] }
 terminal-prism = { cmd = "nextflow run orchestrator.nf", depends-on = ["setup"] }
 terminal-prism-persist = { cmd = "bash -c 'nohup nextflow run orchestrator.nf > .prism-cli.log 2>&1 & echo $! > .prism-cli.pid && echo \"🛡️ Pipeline launched in background (PID: $(cat .prism-cli.pid))\"'", depends-on = ["setup"] }
+terminal-prism-persist-resume = { cmd = "bash -c 'nohup nextflow run orchestrator.nf -resume > .prism-cli.log 2>&1 & echo $! > .prism-cli.pid && echo \"🛡️ Pipeline launched in background (PID: $(cat .prism-cli.pid))\"'", depends-on = ["setup"] }
 attach-gui = { cmd = "tail -f .prism-gui.log" }
 attach-terminal = { cmd = "tail -f .prism-cli.log" }
 stop-gui = { cmd = "bash -c 'kill $(cat .prism-gui.pid) && rm .prism-gui.pid && echo \"GUI stopped.\"'" }
