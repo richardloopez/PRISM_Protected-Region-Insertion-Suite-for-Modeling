@@ -255,9 +255,12 @@ def unify_templates(align_file: str, overlap_limit: int):
         for line in f_in:
             if line.startswith('>P1;'):
                 current_code = line[4:].strip()
-                base_name = os.path.splitext(current_code)[0]
-                unified_name = f"{base_name}_unified.pdb"
-                f_out.write(f">P1;{unified_name}\n")
+                if current_code.endswith('.pdb'):
+                    base_name = os.path.splitext(current_code)[0]
+                    unified_name = f"{base_name}_unified.pdb"
+                    f_out.write(f">P1;{unified_name}\n")
+                else:
+                    f_out.write(line)
             elif current_code in new_sequences and not line.startswith(('structure', 'sequence', 'C;', ' ')):
                 if '*' in line:
                     f_out.write(new_sequences[current_code] + "*\n")
