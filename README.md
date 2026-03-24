@@ -137,7 +137,8 @@ PRISM/                           # Repository root
 │   ├── prep_prism_pdb.py        # Prepares raw PDB files for PRISM (chain splitting, renaming)
 │   ├── prism_verify_rmsd.py     # Verifies experimental coordinate fidelity (CA RMSD)
 │   ├── calc_block_distance.py   # Calculates CA-to-BLK distances for BLOCK_REPULSION_RADIUS
-│   └── unify_templates.py       # Resolves template overlaps and generates unified PDBs
+│   ├── unify_templates.py       # Resolves template overlaps and generates unified PDBs
+│   └── merge_experimental_templates.py # Merges multiple experimental structures into a unified template
 ├── input/                       # Input files (PDBs, FASTA, .ss2, .ali)
 ├── modeling_results/            # Output directory (models, rankings, logs)
 ├── test/                        # Self-contained test case (ready to run)
@@ -244,7 +245,7 @@ The `PRISM_Dashboard.py` provides a full-featured graphical interface:
 | **🔬 Visualization** | Interactive 3D visualization of PDB files using py3Dmol. Multiple rendering styles: ribbon, VDW, surface, line, spacefill. |
 | **⚡ Execution** | Launch the Nextflow pipeline and monitor real-time progress with automatic log updates. |
 | **📊 Results** | View ranked models, DOPE-HR score distributions, Z-score plots, and download the ranking CSV. |
-| **🔧 Tools** | Run `prep_prism_pdb.py`, `prism_verify_rmsd.py`, `calc_block_distance.py`, and `unify_templates.py` directly from the GUI. |
+| **🔧 Tools** | Run `prep_prism_pdb.py`, `prism_verify_rmsd.py`, `calc_block_distance.py`, `unify_templates.py`, and `merge_experimental_templates.py` directly from the GUI. |
 
 **Remote Access (HPC):**  
 If running on a remote cluster, use SSH port forwarding to access the dashboard locally:
@@ -420,9 +421,9 @@ python3 tools/prep_prism_pdb.py prep \
     --protein-chains A \
     --ligand-chains B
 ```
-- Splits the PDB into protein (Chain A) and ligand (Chain B) sections
-- Renumbers atoms sequentially
-- Generates `*_renum_HETATM.pdb` (main template) and a JSON log
+- Splits the PDB into protein (Chain A) and ligand (Chain B) sections.
+- **Continuous, gapless residue numbering**: Both protein and ligand residues are renumbered sequentially (1, 2, 3...) to ensure pipeline consistency.
+- Generates `*_renum_HETATM.pdb` (main template) and a JSON log.
 
 **Mode: `retro` (Restoration)**
 ```bash
@@ -431,8 +432,8 @@ python3 tools/prep_prism_pdb.py retro \
     --original-pdb raw_structure.pdb \
     --log-file prep_log.json
 ```
-- Restores original ligand atoms and naming to a PRISM output model
-- Uses the JSON log from the `prep` step to reverse-map atom names
+- Restores original ligand atoms and naming to a PRISM output model.
+- Uses the JSON log from the `prep` step to reverse-map atom names.
 
 ### 10.2. `prism_verify_rmsd.py` — Coordinate Fidelity Verification
 
@@ -537,6 +538,24 @@ python3 tools/unify_templates.py input/manual_template_FullSeq.ali --overlap 10
 
 > [!IMPORTANT]
 > After running this tool, you must **rename the generated `*_unified.pdb` files** (or update the references in the alignment file and `config.yaml`) before running the PRISM pipeline.
+
+### 10.5. `merge_experimental_templates.py` — Experimental Structure Merging
+
+Merges multiple experimental structures aligned to a predicted model (e.g., AlphaFold) using Biopython. This tool is essential for creating a unified experimental template from partial structures while maintaining coordinate fidelity.
+
+**Usage:**
+```bash
+python3 tools/merge_experimental_templates.py \
+    input/manual_template_FullSeq.ali \
+    AF-P19338-F1-model_v6_prism_prep.pdb \
+    --output_pdb merged_experimental.pdb
+```
+
+**Key Features:**
+- **Continuous, gapless renumbering**: Like other PRISM tools, it renumbers all residues sequentially starting at 1.
+- **Merged Alignment**: Automatically generates a new alignment file (`*_merged.ali`) referencing the merged experimental PDB.
+- **Ligand Preservation**: All non-A chains from the first template are merged into a single Chain 'B' and renumbered sequentially following the protein.
+- **Dynamic Naming**: If `--output_pdb` is not provided, the tool generates a descriptive default name based on the template IDs.
 
 ---
 
