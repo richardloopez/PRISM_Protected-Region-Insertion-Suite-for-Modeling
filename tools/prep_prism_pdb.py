@@ -120,12 +120,12 @@ def run_prep(input_path, prot_chains_str, lig_chains_str):
     current_serial = 1
     
     # --- PROCESS PROTEIN (CHAIN A) ---
-    current_res_seq = 1
+    current_res_seq = 0
     prev_id = None
     
     for atom in protein_atoms:
         curr_id = (atom.chain_id, atom.res_seq, atom.i_code)
-        if prev_id is not None and curr_id != prev_id:
+        if curr_id != prev_id:
             current_res_seq += 1
         
         new_atom = PDBAtom(atom.line)
@@ -149,14 +149,15 @@ def run_prep(input_path, prot_chains_str, lig_chains_str):
         prev_id = curr_id
 
     # --- PROCESS LIGAND (CHAIN B) ---
-    current_res_seq = 1
     prev_id = None
     atom_counter = 1
+    log_res_seq = 0
     
     for atom in ligand_atoms:
         curr_id = (atom.chain_id, atom.res_seq, atom.i_code)
-        if prev_id is not None and curr_id != prev_id:
+        if curr_id != prev_id:
             current_res_seq += 1
+            log_res_seq += 1
             atom_counter = 1
         
         new_name = format_atom_name_blk(atom_counter)
@@ -171,7 +172,7 @@ def run_prep(input_path, prot_chains_str, lig_chains_str):
         new_atom.temp = 99.99
         new_atom.record_type = "HETATM"
         
-        key = f"{current_res_seq}_{new_name}"
+        key = f"{log_res_seq}_{new_name}"
         log_data["ligand_map"][key] = {
             "orig_chain": atom.chain_id,
             "orig_res_name": atom.res_name,
@@ -229,6 +230,9 @@ def run_retro(model_path, original_path, log_path):
     ligand_map = log_data.get("ligand_map", {})
 
     restored_lines = []
+    log_res_seq = 0
+    atom_counter = 1
+    prev_id = None
     
     with open(model_path, 'r') as f:
         for line in f:
@@ -240,7 +244,11 @@ def run_retro(model_path, original_path, log_path):
 
             # --- RESTORE LIGAND (Chain B) ---
             if atom.chain_id == 'B':
-                key = f"{atom.res_seq}_{atom.name.strip()}"
+                curr_id = (atom.chain_id, atom.res_seq, atom.i_code)
+                if curr_id != prev_id:
+                    log_res_seq += 1
+                    atom_counter = 1
+                key = f"{log_res_seq}_{atom.name.strip()}"
                 
                 if key in ligand_map:
                     info = ligand_map[key]
@@ -254,6 +262,8 @@ def run_retro(model_path, original_path, log_path):
                     atom.record_type = f"{info['orig_record']:<6}"
                     
                     atom.temp = 0.00 
+                    atom_counter += 1
+                    prev_id = curr_id
                 else:
                     print(f"[RETRO] Warning: No map found for Chain B atom {key}. Keeping as is.")
 
