@@ -255,7 +255,9 @@ def unify_templates(align_file: str, overlap_limit: int):
         for line in f_in:
             if line.startswith('>P1;'):
                 current_code = line[4:].strip()
-                f_out.write(line)
+                base_name = os.path.splitext(current_code)[0]
+                unified_name = f"{base_name}_unified.pdb"
+                f_out.write(f">P1;{unified_name}\n")
             elif current_code in new_sequences and not line.startswith(('structure', 'sequence', 'C;', ' ')):
                 if '*' in line:
                     f_out.write(new_sequences[current_code] + "*\n")
@@ -263,21 +265,13 @@ def unify_templates(align_file: str, overlap_limit: int):
                 else:
                     pass
             elif current_code in new_sequences and line.startswith(('structure', 'sequence')):
-                f_out.write(line)
+                base_name = os.path.splitext(current_code)[0]
+                unified_name = f"{base_name}_unified.pdb"
+                f_out.write(line.replace(current_code, unified_name))
             else:
                 f_out.write(line)
 
     print(f"\nSuccess! Unified alignment written to {output_ali}")
-    print('''
-            REMEMBER: RENAME THE GENERATED .PDBs (preferred)
-            OR 
-            UPDATE THE NAMES IN:
-                - ALIGNMENT FILE
-                - CONFIG.YAML (or GUI)
-            
-            (Names are not overwritten automatically so the user can verify the files are correct.)
-    ''')
-
 def main():
     parser = argparse.ArgumentParser(description="Unify templates by resolving sequence overlaps.")
     parser.add_argument("alignment", help="Path to the Modeller alignment file (.ali)")
