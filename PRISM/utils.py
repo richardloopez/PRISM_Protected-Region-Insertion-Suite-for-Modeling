@@ -485,11 +485,9 @@ def identify_experimental_residues(aligned_template_seq: str, aligned_target_seq
         raise ValueError("Aligned template and target sequences must have equal lengths.")
     
     for template_res, target_res in zip(aligned_template_seq, aligned_target_seq):
-        if template_res == '.' or template_res == '/':
-            continue
-        if target_res != '-':
+        if target_res not in ('-', '.', '/'):
             target_res_num += 1
-        if template_res != '-' and target_res != '-':
+        if template_res not in ('-', '.', '/') and target_res not in ('-', '.', '/'):
             experimental_residues.add(target_res_num)
     
     if config.USE_MANUAL_FIXATION_SELECTION:
