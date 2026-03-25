@@ -28,8 +28,8 @@ including file paths, model parameters, and execution settings.
 
 import os
 import yaml
-from typing import List, Union, Literal, Dict, Optional, Tuple
-from pydantic import BaseModel, EmailStr, Field, computed_field, model_validator
+from typing import List, Union, Literal, Dict, Optional, Tuple, Any
+from pydantic import BaseModel, EmailStr, Field, computed_field, model_validator, field_validator
 
 class PrismPowerConfig(BaseModel):
     precalculation: Dict[str, int]
@@ -92,6 +92,25 @@ class PrismConfig(BaseModel):
         if (isinstance(self.NUM_BEST_FINAL_MODELS, int) and self.NUM_BEST_FINAL_MODELS < 1) or (isinstance(self.NUM_BEST_FINAL_MODELS, str) and self.NUM_BEST_FINAL_MODELS.lower() != "inf"):
             raise ValueError("num_best_final_models must be a positive integer or 'inf'")
         return self
+    
+    @field_validator('MANUAL_OPTIMIZATION_RESIDUES', 'MANUAL_FIXATION_RESIDUES', mode='before')
+    @classmethod
+    def expand_residue_ranges(cls, v: Any) -> List[int]:
+        if not isinstance(v, list):
+            return v
+
+        expanded_list: List[int] = []
+        for item in v:
+            if isinstance(item, str) and '-' in item:
+                start_str, end_str = item.split('-', 1)
+                start, end = map(int, (start_str.strip(), end_str.strip()))
+                if start > end:
+                    start, end = end, start
+                expanded_list.extend(range(start, end + 1))
+            else:
+                expanded_list.append(int(item))
+
+        return expanded_list
 
     # Calculated Fields
 
