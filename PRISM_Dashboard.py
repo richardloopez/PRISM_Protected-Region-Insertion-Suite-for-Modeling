@@ -20,7 +20,9 @@ from PRISM.config import settings, PrismConfig, load_settings
 from PRISM.ui_utils import (
     run_nextflow, get_nextflow_progress, visualize_pdb, 
     save_uploaded_file, load_ranking_csv, list_files_in_dir,
-    run_tool, get_score_distribution_data, delete_file
+    run_tool, get_score_distribution_data, delete_path,
+    create_directory, list_root_dirs, move_path, copy_path,
+    get_all_project_files
 )
 import streamlit.components.v1 as components
 
@@ -95,8 +97,8 @@ st.sidebar.markdown("---")
 st.sidebar.caption("PRISM v1.2.0 | Production Refactor")
 
 # Main Navigation
-tab_config, tab_files, tab_viz, tab_exec, tab_results, tab_tools = st.tabs([
-    "⚙️ Config", "📂 Files", "🧬 Visualization", "🚀 Execution", "📊 Results", "🛠️ Tools"
+tab_config, tab_files, tab_viz, tab_exec, tab_results, tab_tools, tab_file_mgmt = st.tabs([
+    "⚙️ Config", "📂 Files", "🧬 Visualization", "🚀 Execution", "📊 Results", "🛠️ Tools", "🗂️ File Management"
 ])
 
 with tab_config:
@@ -271,7 +273,7 @@ with tab_files:
                 with c3: st.text(f["modified"])
                 with c4:
                     if st.button("🗑️", key=f"del_{f['name']}", help=f"Delete {f['name']}"):
-                        if delete_file(st.session_state.config.INPUT_DIR, f["name"]):
+                        if delete_path(os.path.join(st.session_state.config.INPUT_DIR, f["name"])):
                             st.success(f"Deleted {f['name']}")
                             st.rerun()
         else:
@@ -399,13 +401,196 @@ with tab_tools:
         tools = [f for f in os.listdir(tools_dir) if f.endswith(".py")]
         selected_tool = st.selectbox("Select Tool to Run", tools, help="Scripts located in the /tools folder")
         
-        tool_args = st.text_input("Arguments (space separated)", placeholder="e.g. --input input/template.pdb", 
-                                 help="Provide arguments as if running from the command line")
+        # 1. Initialize session state
+        if 'tool_args_str' not in st.session_state:
+            st.session_state.tool_args_str = ""
+        if 'do_autocomplete' not in st.session_state:
+            st.session_state.do_autocomplete = False
+
+        # 2. Define autocompletion logic (Common Prefix style)
+        def autocomplete_args():
+            # Get latest typed text from the state
+            typed = st.session_state.get('args_input_key', '')
+            if not typed: return
+            
+            words = typed.split()
+            if not words: return
+            
+            last_word = words[-1]
+            proj_files = get_all_project_files()
+            matches = [f for f in proj_files if f.startswith(last_word)]
+            
+            if len(matches) == 1:
+                words[-1] = matches[0]
+                new_val = " ".join(words) + " "
+                st.session_state.args_input_key = new_val
+                st.session_state.tool_args_str = new_val
+                st.toast(f"✅ Path completed: {matches[0]}", icon="🛠️")
+            elif len(matches) > 1:
+                common_prefix = os.path.commonprefix(matches)
+                if common_prefix and len(common_prefix) > len(last_word):
+                    words[-1] = common_prefix
+                    new_val = " ".join(words)
+                    st.session_state.args_input_key = new_val
+                    st.session_state.tool_args_str = new_val
+                st.info(f"💡 Multiple matches found: {', '.join(matches[:10])}...")
+            else:
+                st.session_state.tool_args_str = typed
+
+        # Perform autocompletion if triggered by a button in the PREVIOUS run
+        if st.session_state.do_autocomplete:
+            autocomplete_args()
+            st.session_state.do_autocomplete = False
+
+        # 3. The Tool Arguments box (Pure Python)
+        col_args, col_comp = st.columns([4, 1], vertical_alignment="bottom")
         
-        if st.button("🛠️ Execute Tool"):
+        with col_args:
+            st.text_input("Tool Arguments", 
+                          key="args_input_key", 
+                          placeholder="e.g. --mode prep input/my_file.pdb",
+                          help="Type your command. Click 'Complete' to autocomplete file paths.")
+        
+        with col_comp:
+            if st.button("🔍 Complete", use_container_width=True, help="Autocomplete the last word if it's a file path"):
+                st.session_state.do_autocomplete = True
+                st.rerun()
+        
+        # Display the real-time command
+        current_args = st.session_state.get('tool_args_str', '') or st.session_state.get('args_input_key', '')
+        st.caption(f"🚀 Final Command: `{selected_tool} {current_args}`")
+
+        if st.button("🛠️ Execute Tool", use_container_width=True, type="primary"):
             with st.spinner(f"Running {selected_tool}..."):
-                args_list = tool_args.split() if tool_args else []
-                output = run_tool(selected_tool, args_list)
+                # Always use the most up-to-date value
+                final_args = st.session_state.args_input_key.split() if st.session_state.args_input_key else []
+                output = run_tool(selected_tool, final_args)
                 st.code(output, language="text")
     else:
         st.error("Tools directory not found.")
+
+with tab_file_mgmt:
+    st.header("🗂️ Project File Management")
+    st.markdown("Manage project folders and documents. Every box represents a folder in the project root.")
+    
+    # 1. New Folder Bar
+    with st.expander("➕ Create New Folder", expanded=False):
+        col_new1, col_new2 = st.columns([3, 1], vertical_alignment="bottom")
+        with col_new1:
+            new_folder_name = st.text_input("Folder Name", placeholder="e.g. custom_results")
+        with col_new2:
+            if st.button("Create", use_container_width=True):
+                if new_folder_name:
+                    if create_directory(new_folder_name):
+                        st.success(f"Folder '{new_folder_name}' created!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to create folder.")
+                else:
+                    st.warning("Please enter a name.")
+
+    st.divider()
+
+    # 4. Folder Boxes
+    root_dirs = list_root_dirs()
+
+    # 2. File Selection State
+    if 'selected_paths' not in st.session_state:
+        st.session_state.selected_paths = []
+
+    # 3. Global Actions
+    action_col1, action_col2, action_col3, action_col4 = st.columns([1, 1, 1, 3], vertical_alignment="bottom")
+    
+    with action_col4:
+        # Destination folder for Move/Copy
+        destination = st.selectbox("Target Folder for Move/Copy", ["."] + root_dirs, help="Select destination for move or copy actions")
+
+    with action_col1:
+        if st.button("🗑️ Delete", type="primary", use_container_width=True, help="Delete selected items"):
+            if st.session_state.selected_paths:
+                deleted_count = 0
+                for path in st.session_state.selected_paths:
+                    if delete_path(path):
+                        deleted_count += 1
+                st.session_state.selected_paths = []
+                st.success(f"Deleted {deleted_count} items.")
+                st.rerun()
+            else:
+                st.warning("No items selected.")
+
+    with action_col2:
+        if st.button("🚚 Move", use_container_width=True, help="Move selected items to destination"):
+            if st.session_state.selected_paths and destination:
+                moved_count = 0
+                for path in st.session_state.selected_paths:
+                    # Avoid moving a folder into itself
+                    if destination != "." and destination in path:
+                        st.error(f"Cannot move {path} into its own subfolder {destination}")
+                        continue
+                        
+                    target = os.path.join(destination, os.path.basename(path))
+                    if move_path(path, target):
+                        moved_count += 1
+                st.session_state.selected_paths = []
+                st.success(f"Moved {moved_count} items to {destination}.")
+                st.rerun()
+            else:
+                st.warning("Select items and a destination.")
+
+    with action_col3:
+        if st.button("📋 Copy", use_container_width=True, help="Copy selected items to destination"):
+            if st.session_state.selected_paths and destination:
+                copied_count = 0
+                for path in st.session_state.selected_paths:
+                    target = os.path.join(destination, os.path.basename(path))
+                    # Handle name collision for copy
+                    if os.path.exists(target):
+                        target = os.path.join(destination, f"copy_{os.path.basename(path)}")
+                        
+                    if copy_path(path, target):
+                        copied_count += 1
+                st.session_state.selected_paths = []
+                st.success(f"Copied {copied_count} items to {destination}.")
+                st.rerun()
+            else:
+                st.warning("Select items and a destination.")
+
+    # 4. Folder Boxes
+    root_dirs = list_root_dirs()
+    if root_dirs:
+        # Display boxes in a grid-like fashion (2 columns)
+        cols = st.columns(2)
+        for i, directory in enumerate(root_dirs):
+            with cols[i % 2]:
+                with st.container(border=True):
+                    st.subheader(f"📁 {directory}")
+                    
+                    # Selection for the folder itself
+                    if st.checkbox(f"Select folder: {directory}", key=f"sel_dir_{directory}"):
+                        if directory not in st.session_state.selected_paths:
+                            st.session_state.selected_paths.append(directory)
+                    else:
+                        if directory in st.session_state.selected_paths:
+                            st.session_state.selected_paths.remove(directory)
+
+                    # List files in this directory
+                    dir_files = os.listdir(directory)
+                    if dir_files:
+                        for f in sorted(dir_files):
+                            # Skip hidden files
+                            if f.startswith("."): continue
+                            
+                            f_path = os.path.join(directory, f)
+                            is_dir = os.path.isdir(f_path)
+                            icon = "📁" if is_dir else "📄"
+                            
+                            if st.checkbox(f"{icon} {f}", key=f"sel_f_{f_path}"):
+                                if f_path not in st.session_state.selected_paths:
+                                    st.session_state.selected_paths.append(f_path)
+                            else:
+                                if f_path in st.session_state.selected_paths:
+                                    st.session_state.selected_paths.remove(f_path)
+                    else:
+                        st.caption("Empty folder")
+    else:
+        st.info("No directories found in the project root.")
