@@ -13,7 +13,6 @@ import os
 import subprocess
 import pandas as pd
 import py3Dmol
-import streamlit as st
 import sys
 from pathlib import Path
 from typing import List, Dict, Any, Union, Optional, Generator
@@ -78,20 +77,39 @@ def list_files_in_dir(directory: Union[str, Path]) -> List[Dict[str, str]]:
 def run_tool(script_name: str, args: Optional[List[str]] = None) -> str:
     '''
     Executes a tool from the tools/ directory.
+    Output is redirected to the 'output_tools' folder.
     '''
-    tool_path = Path("tools") / script_name
+    output_dir = Path("output_tools")
+    output_dir.mkdir(exist_ok=True)
+
+    tool_path = Path("tools").absolute() / script_name
     if not tool_path.exists():
         return f"Error: Tool {script_name} not found."
     
-    cmd = [sys.executable, str(tool_path)]
+    processed_args = []
     if args:
-        cmd.extend(args)
+        for arg in args:
+            if (arg.startswith("./") or "/" in arg or os.path.exists(arg)) and not arg.startswith(("-", "--")):
+                processed_args.append(str(Path(arg).absolute()))
+            else:
+                processed_args.append(arg)
+    
+    cmd = [sys.executable, str(tool_path)]
+    cmd.extend(processed_args)
     
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, cwd=str(output_dir))
         return result.stdout
     except subprocess.CalledProcessError as e:
-        return f"Error executing tool:\n{e.stderr}"
+        error_msg = f"Error executing tool: {script_name}\n"
+        error_msg += f"Return code: {e.returncode}\n"
+        if e.stdout:
+            error_msg += f"\n--- Standard Output ---\n{e.stdout}"
+        if e.stderr:
+            error_msg += f"\n--- Standard Error ---\n{e.stderr}"
+        return error_msg
+    except Exception as e:
+        return f"Unexpected error running tool: {e}"
 
 def get_score_distribution_data() -> Optional[pd.DataFrame]:
     '''
@@ -112,15 +130,83 @@ def load_ranking_csv() -> Optional[pd.DataFrame]:
         return pd.read_csv(csv_path)
     return None
 
-def delete_file(directory: Union[str, Path], filename: str) -> bool:
+def delete_path(path: Union[str, Path]) -> bool:
     '''
-    Deletes a file from the specified directory.
+    Deletes a file or directory.
     '''
-    file_path = Path(directory) / filename
-    if file_path.exists():
-        os.remove(file_path)
+    p = Path(path)
+    if not p.exists():
+        return False
+    
+    try:
+        if p.is_file():
+            p.unlink()
+        elif p.is_dir():
+            import shutil
+            shutil.rmtree(p)
         return True
-    return False
+    except Exception:
+        return False
+
+def create_directory(path: Union[str, Path]) -> bool:
+    '''
+    Creates a directory if it doesn't exist.
+    '''
+    try:
+        Path(path).mkdir(parents=True, exist_ok=True)
+        return True
+    except Exception:
+        return False
+
+def move_path(src: Union[str, Path], dst: Union[str, Path]) -> bool:
+    '''
+    Moves a file or directory to a new location.
+    '''
+    import shutil
+    try:
+        shutil.move(str(src), str(dst))
+        return True
+    except Exception:
+        return False
+
+def copy_path(src: Union[str, Path], dst: Union[str, Path]) -> bool:
+    '''
+    Copies a file or directory to a new location.
+    '''
+    import shutil
+    try:
+        src_path = Path(src)
+        if src_path.is_dir():
+            shutil.copytree(src, dst)
+        else:
+            shutil.copy2(src, dst)
+        return True
+    except Exception:
+        return False
+
+def list_root_dirs() -> List[str]:
+    '''
+    Lists directories in the project root, excluding hidden ones.
+    '''
+    dirs = [d for d in os.listdir(".") if os.path.isdir(d) and not d.startswith(".")]
+    return sorted(dirs)
+
+def get_all_project_files() -> List[str]:
+    '''
+    Recursively lists all files in the project for autocompletion, 
+    excluding hidden and internal directories.
+    '''
+    all_files = []
+    exclude_dirs = {".pixi", ".git", "__pycache__", ".snakemake", ".nextflow", "work"}
+    for root, dirs, files in os.walk("."):
+        # Filter out excluded directories in-place to prevent walking into them
+        dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith(".")]
+        
+        for f in files:
+            if f.startswith("."): continue
+            p = os.path.relpath(os.path.join(root, f), ".")
+            all_files.append(p)
+    return sorted(all_files)
 
 def save_uploaded_file(uploaded_file: Any, target_dir: Union[str, Path]) -> str:
     '''
