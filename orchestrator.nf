@@ -49,7 +49,7 @@ process PREREQ_CDE {
     publishDir "${params.results_dir}/logs", mode: 'copy', pattern: "*.log"
     
     output:
-    path "input/*.ali", emit: alignments
+    path "input/*.ali", emit: alignments, optional: true
     path "input/*.ss2", emit: ss2_file, optional: true 
     path "psipred_results", emit: psipred_results_dir, optional: true
     path "*.log", emit: log
@@ -66,10 +66,14 @@ process PREREQ_CDE {
 
     export PYTHONPATH=\$ROOT_DIR:\$PYTHONPATH
     python3 -m PRISM.controller --stage prereq-cde > S1_prereq_cde.log 2>&1
+
+    if [ -d modeling_results ] && ls modeling_results/*.ali >/dev/null 2>&1; then
+        cp modeling_results/*.ali input/
+    fi
     """
 }
 
-process AUTOMODEL_PRECALC {
+process PRECALC_AUTOMODEL {
     tag "S2-AutoModel-Precalc:${job_id}"
     publishDir "${params.input_dir}", mode: 'copy', saveAs: flatPath, pattern: "input/*.{rsr,pdb,ali}"
     publishDir "${params.results_dir}/logs", mode: 'copy', pattern: "*.log"
@@ -97,7 +101,7 @@ process AUTOMODEL_PRECALC {
 
     cd modeling_results/
     export PYTHONPATH=\$ROOT_DIR:\$PYTHONPATH
-    python3 -m PRISM.controller --stage automodel --job-id ${job_id} --input-mode ${input_mode} > ../S2_automodel_precalc_${job_id}.log 2>&1
+    python3 -m PRISM.controller --stage automodel --job-id ${job_id} --input-mode ${input_mode} > ../S2_precalc_automodel_${job_id}.log 2>&1
 
     """
 }
@@ -234,12 +238,12 @@ workflow {
     PREREQ_CDE() // S1
 
     if (params.execution_paradigm == "precalculation") {  
-        AUTOMODEL_PRECALC(1, params.execution_paradigm, PREREQ_CDE.out.alignments) // S2 (precalculation)
+        PRECALC_AUTOMODEL(1, params.execution_paradigm, PREREQ_CDE.out.alignments) // S2 (precalculation)
     } 
     else if (params.execution_paradigm == "prism-power") {  
-        AUTOMODEL_PRECALC(1, "precalculation", PREREQ_CDE.out.alignments)
+        PRECALC_AUTOMODEL(1, "precalculation", PREREQ_CDE.out.alignments)
         job_ids = Channel.of(1..params.num_split)
-        AUTOMODEL(job_ids, PREREQ_CDE.out.alignments.collect(), "precomputed", AUTOMODEL_PRECALC.out.rsr_file.collect(), AUTOMODEL_PRECALC.out.ini_file.collect()) // S2 (prism-power)
+        AUTOMODEL(job_ids, PREREQ_CDE.out.alignments.collect(), "precomputed", PRECALC_AUTOMODEL.out.rsr_file.collect(), PRECALC_AUTOMODEL.out.ini_file.collect()) // S2 (prism-power)
         
         RANK_AUTOMODEL(AUTOMODEL.out.models.collect()) // S3 (prism-power)
         
