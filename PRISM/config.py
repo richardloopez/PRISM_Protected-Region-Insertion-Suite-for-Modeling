@@ -26,8 +26,9 @@ including file paths, model parameters, and execution settings.
 
 '''
 
-import os
+import logging
 import yaml
+from pathlib import Path
 from typing import List, Union, Literal, Dict, Optional, Tuple, Any
 from pydantic import BaseModel, EmailStr, Field, computed_field, model_validator, field_validator
 
@@ -118,49 +119,49 @@ class PrismConfig(BaseModel):
     @computed_field
     @property
     def PROJECT_ROOT(self) -> str:
-        return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        return str(Path(__file__).resolve().parent.parent)
     @computed_field
     @property
     def INPUT_DIR(self) -> str:
-        return os.path.join(self.PROJECT_ROOT, self.INPUT_DIR_NAME)
+        return str(Path(self.PROJECT_ROOT) / self.INPUT_DIR_NAME)
     @computed_field
     @property
     def MODELING_RESULTS_DIR(self) -> str:
-        return os.path.join(self.PROJECT_ROOT, self.MODELING_RESULTS_DIR_NAME)
+        return str(Path(self.PROJECT_ROOT) / self.MODELING_RESULTS_DIR_NAME)
     @computed_field
     @property
     def PSIPRED_RESULTS_DIR(self) -> str:
-        return os.path.join(self.PROJECT_ROOT, self.PSIPRED_RESULTS_DIR_NAME)
+        return str(Path(self.PROJECT_ROOT) / self.PSIPRED_RESULTS_DIR_NAME)
     
     # Files dirs
     @computed_field
     @property
     def CUSTOM_INIFILE_PATH(self) -> str:
-        return os.path.join(self.INPUT_DIR, self.CUSTOM_INIFILE_BASENAME)
+        return str(Path(self.INPUT_DIR) / self.CUSTOM_INIFILE_BASENAME)
     @computed_field
     @property
     def CUSTOM_RSRFILE_PATH(self) -> str:
-        return os.path.join(self.INPUT_DIR, self.CUSTOM_RSRFILE_BASENAME)
+        return str(Path(self.INPUT_DIR) / self.CUSTOM_RSRFILE_BASENAME)
     @computed_field
     @property
     def FASTA_FILE_PATH(self) -> str:
-        return os.path.join(self.INPUT_DIR, self.FASTA_FILE_BASENAME)
+        return str(Path(self.INPUT_DIR) / self.FASTA_FILE_BASENAME)
     @computed_field
     @property
     def SS2_FILE_PATH(self) -> str:
-        return os.path.join(self.INPUT_DIR, self.SS2_FILE_BASENAME)
+        return str(Path(self.INPUT_DIR) / self.SS2_FILE_BASENAME)
     @computed_field
     @property
     def MANUAL_ALIGNMENT_FILE(self) -> str:
-        return os.path.join(self.INPUT_DIR, self.MANUAL_ALIGNMENT_BASENAME)
+        return str(Path(self.INPUT_DIR) / self.MANUAL_ALIGNMENT_BASENAME)
     @computed_field
     @property
     def MANUAL_ALIGNMENT_CDE_FILE(self) -> str:
-        return os.path.join(self.INPUT_DIR, self.MANUAL_ALIGNMENT_CDE_BASENAME)
+        return str(Path(self.INPUT_DIR) / self.MANUAL_ALIGNMENT_CDE_BASENAME)
     @computed_field
     @property
     def PDB_TEMPLATE_FILES_PATHS(self) -> List[str]:
-        return [os.path.join(self.INPUT_DIR, pdb_file) for pdb_file in self.PDB_TEMPLATE_FILES_NAMES]
+        return [str(Path(self.INPUT_DIR) / pdb_file) for pdb_file in self.PDB_TEMPLATE_FILES_NAMES]
     @computed_field
     @property
     def MAIN_PDB_TEMPLATE_PATH(self) -> str:
@@ -172,15 +173,15 @@ class PrismConfig(BaseModel):
     @computed_field
     @property
     def ALIGNMENT_FILE(self) -> str:
-        return os.path.join(self.MODELING_RESULTS_DIR, f'{self.MAIN_ALIGN_CODE_TEMPLATE}_{self.ALIGN_CODE_SEQUENCE}.ali')
+        return str(Path(self.MODELING_RESULTS_DIR) / f'{self.MAIN_ALIGN_CODE_TEMPLATE}_{self.ALIGN_CODE_SEQUENCE}.ali')
     @computed_field
     @property
     def ALIGNMENT_CDE_FILE(self) -> str:
-        return os.path.join(self.MODELING_RESULTS_DIR, f'{self.MAIN_ALIGN_CODE_TEMPLATE}_{self.ALIGN_CODE_SEQUENCE}_cde.ali')
+        return str(Path(self.MODELING_RESULTS_DIR) / f'{self.MAIN_ALIGN_CODE_TEMPLATE}_{self.ALIGN_CODE_SEQUENCE}_cde.ali')
     @computed_field
     @property
     def FINAL_RANKING_CSV(self) -> str:
-        return os.path.join(self.MODELING_RESULTS_DIR, f'final_ranking.csv')
+        return str(Path(self.MODELING_RESULTS_DIR) / 'final_ranking.csv')
 
 # ============================================================================
 # INSTANTIATION LOGIC
@@ -199,7 +200,7 @@ class PrismConfig(BaseModel):
         data['PSIPRED_EMAIL'] = str(data['PSIPRED_EMAIL'])
         data = {k: v for k, v in data.items() if v is not None}
 
-        full_yaml_path = os.path.join(self.PROJECT_ROOT, yaml_path)
+        full_yaml_path = Path(self.PROJECT_ROOT) / yaml_path
         with open(full_yaml_path, "w") as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
@@ -207,22 +208,23 @@ def load_settings(yaml_path: Optional[str] = None) -> PrismConfig:
     '''
     Loads the YAML file and returns a validated PrismConfig object.
     '''
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    project_root = Path(__file__).resolve().parent.parent
     
     if yaml_path is None:
-        yaml_path = os.path.join(project_root, "config.yaml")
-    elif not os.path.isabs(yaml_path):
-        yaml_path = os.path.join(project_root, yaml_path)
+        yaml_path = project_root / "config.yaml"
+    else:
+        yaml_path = Path(yaml_path)
+        if not yaml_path.is_absolute():
+            yaml_path = project_root / yaml_path
 
-    if not os.path.exists(yaml_path):
+    if not yaml_path.exists():
         raise FileNotFoundError(f"Config file not found at {yaml_path}")
         
     with open(yaml_path, "r") as f:
         raw_data = yaml.safe_load(f)
     return PrismConfig(**raw_data)
 
-settings = load_settings()
-
+settings = None
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -257,14 +259,20 @@ def get_sequence():
 # INJECTION
 # ============================================================================
 
-for field_name in PrismConfig.model_fields:
-    globals()[field_name] = getattr(settings, field_name)
-
-for computed_name in PrismConfig.model_computed_fields:
-    try:
-        globals()[computed_name] = getattr(settings, computed_name)
-    except AttributeError:
-        continue
+def __getattr__(name):
+    global settings, sequence_full
+    if settings is None:
+        settings = load_settings()
+        for field_name in PrismConfig.model_fields:
+            globals()[field_name] = getattr(settings, field_name)
+        for computed_name in PrismConfig.model_computed_fields:
+            try:
+                globals()[computed_name] = getattr(settings, computed_name)
+            except AttributeError:
+                pass
+    if name in globals():
+        return globals()[name]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 __all__ = ['settings', 'sequence_full'] + list(PrismConfig.model_fields.keys()) + list(PrismConfig.model_computed_fields.keys())
 
