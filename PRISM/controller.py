@@ -41,7 +41,7 @@ def main() -> None:
         '--stage',
         type=str,
         required=True,
-        choices=['prereq-cde', 'replicator', 'automodel', 'rank-automodel', 'loopmodel', 'final-rank'],
+        choices=['prereq-cde', 'automodel', 'rank-automodel', 'loopmodel', 'final-rank'],
         help="Pipeline stage to execute"
     )
 
@@ -96,17 +96,7 @@ def main() -> None:
         end = min(args.job_id * models_per_job, config.TOTAL_HOMOLOGY_MODELS)
         input_mode = args.input_mode
 
-        if config.EXECUTION_PARADIGM == 'prism-power':
-            if input_mode == 'precalculation':
-                knowns, ali_file = utils.prepare_prism_power_files(phase=input_mode)
-                _, _, _, fixed_res = utils.run_prerequisites(env)
-            elif input_mode == 'precomputed':
-                knowns, ali_file = utils.prepare_prism_power_files(phase=input_mode)
-                _, _, _, fixed_res = utils.run_prerequisites(env)
-        elif config.EXECUTION_PARADIGM == 'precalculation':
-            knowns, ali_file = utils.prepare_prism_power_files(phase=input_mode)
-            _, _, _, fixed_res = utils.run_prerequisites(env)
-        elif config.EXECUTION_PARADIGM == 'precomputed':
+        if config.EXECUTION_PARADIGM in ('prism-power', 'precalculation', 'precomputed'):
             knowns, ali_file = utils.prepare_prism_power_files(phase=input_mode)
             _, _, _, fixed_res = utils.run_prerequisites(env)
         elif config.EXECUTION_PARADIGM == 'normal':
