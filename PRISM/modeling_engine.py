@@ -89,7 +89,7 @@ class FixedRegionAutoModel(AutoModel):
         
         logger.info("\n" + "="*80)
         logger.info("PRISM OPTIMIZATION SELECTION REPORT ([ENVIRONMENT][FixedRegionAutoModel])")
-        ("\n" + "="*80)
+        logger.info("\n" + "="*80)
         logger.info(f"Frozen Protein Residues (Chain: {self.chain_id}) (Total: {len(fixed_prot_ids)}): {', '.join(item['res_num'] for item in fixed_prot_ids)}")
         if fixed_blk_ids:
             logger.info(f"Frozen BLK/HETATM Residues (Chain: {self.blk_chain_id}) (Total: {len(fixed_blk_ids)}): {', '.join(item['res_num'] for item in fixed_blk_ids)}")
@@ -275,11 +275,11 @@ def run_automodel(env: Environ, align_file: str, job: Job,
 def run_loop_model(env: Environ, job: Job, initial_models_names: List[str],
                         loop_ranges : List[Tuple[int, int]],
                         experimental_residues: Set[int]) -> None:
-    min_loop_length = 1
-    max_loop_length = 1000
     '''
     Run LoopModel for loop refinement. Returns a list of models.
     '''
+    min_loop_length = 1
+    max_loop_length = 1000
     if not loop_ranges:
         logger.info("[ENVIRONMENT][run_loop_model] No loop ranges provided. Skipping loop refinement.")
         return
