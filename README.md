@@ -568,7 +568,7 @@ process {
     executor = 'slurm'
     queue    = 'all'    // Your cluster partition name
 
-    withName: 'AUTOMODEL|AUTOMODEL_PRECALC' {
+    withName: 'AUTOMODEL|PRECALC_AUTOMODEL' {
         cpus = config_data.MODELLER_CORES  // Reads from config.yaml
         memory = '80 GB'
     }
