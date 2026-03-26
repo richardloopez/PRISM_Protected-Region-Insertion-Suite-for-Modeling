@@ -78,9 +78,12 @@ def poll_job(uuid: str, interval: int) -> Dict[str, Any]:
     Returns:
         Dictionary containing job status and results.
     '''
+    max_time = 5 * 3600
+    elapsed_time = 0
     last_state = None
-    while True:
+    while elapsed_time < max_time:
         time.sleep(interval)
+        elapsed_time += interval
         response = requests.get(f'{URL_CHECK_BASE}{uuid}', headers=HEADERS)
         response.raise_for_status()
         status_data = response.json()
@@ -93,6 +96,8 @@ def poll_job(uuid: str, interval: int) -> Dict[str, Any]:
             return status_data
         if state.lower() == 'error':
             raise RuntimeError(f"Job failed with message: {msg}")
+    
+    raise TimeoutError("Job polling timed out after 5 hours.")
             
 
 def download_results(status_data: Dict[str, Any], output_dir: Path) -> Optional[Path]:
