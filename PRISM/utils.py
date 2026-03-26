@@ -656,10 +656,3 @@ def final_evaluation_and_ranking(env) -> Tuple[List[Dict[str, Any]], Dict[str, A
     logger.info(f"[FINAL_EVALUATION] Best models ranking saved to {config.FINAL_RANKING_CSV}")
     
     return results, (best_models[0] if best_models else {})
-    
-    return results, (best_models[0] if best_models else {})
-
-
-    
-
-
