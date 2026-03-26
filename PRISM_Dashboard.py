@@ -42,8 +42,8 @@ st.markdown("---")
 if 'config' not in st.session_state:
     try:
         st.session_state.config = load_settings()
-    except:
-        st.error("Could not load config.yaml. Please ensure it exists.")
+    except Exception as e:
+        st.error(f"Could not load config.yaml. Please ensure it exists. Error: {e}")
         st.stop()
 
 # Sidebar
