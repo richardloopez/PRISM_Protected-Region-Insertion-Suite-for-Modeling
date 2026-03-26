@@ -29,7 +29,7 @@ including file paths, model parameters, and execution settings.
 import logging
 import yaml
 from pathlib import Path
-from typing import List, Union, Literal, Dict, Optional, Tuple, Any
+from typing import List, Union, Literal, Dict, Optional, Any
 from pydantic import BaseModel, EmailStr, Field, computed_field, model_validator, field_validator
 
 class PrismPowerConfig(BaseModel):
@@ -250,7 +250,9 @@ def get_sequence():
     '''
     Get the sequence from the FASTA file.
     '''
-    global sequence_full
+    global sequence_full, settings
+    if settings is None:
+        settings = load_settings()
     if sequence_full is None:
         sequence_full = read_fasta_sequence(settings.FASTA_FILE_PATH)
     return sequence_full
@@ -266,10 +268,7 @@ def __getattr__(name):
         for field_name in PrismConfig.model_fields:
             globals()[field_name] = getattr(settings, field_name)
         for computed_name in PrismConfig.model_computed_fields:
-            try:
-                globals()[computed_name] = getattr(settings, computed_name)
-            except AttributeError:
-                pass
+            globals()[computed_name] = getattr(settings, computed_name)
     if name in globals():
         return globals()[name]
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
@@ -277,4 +276,6 @@ def __getattr__(name):
 __all__ = ['settings', 'sequence_full'] + list(PrismConfig.model_fields.keys()) + list(PrismConfig.model_computed_fields.keys())
 
 if __name__ == "__main__":
+    if settings is None:
+        settings = load_settings()
     print(settings.model_dump_json())
