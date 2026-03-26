@@ -14,7 +14,6 @@ import subprocess
 import pandas as pd
 import py3Dmol
 import streamlit as st
-import json
 import sys
 from pathlib import Path
 from typing import List, Dict, Any, Union, Optional, Generator
@@ -88,8 +87,11 @@ def run_tool(script_name: str, args: Optional[List[str]] = None) -> str:
     if args:
         cmd.extend(args)
     
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    return result.stdout
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        return f"Error executing tool:\n{e.stderr}"
 
 def get_score_distribution_data() -> Optional[pd.DataFrame]:
     '''
