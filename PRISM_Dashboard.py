@@ -25,6 +25,19 @@ from PRISM.ui_utils import (
     get_all_project_files
 )
 import streamlit.components.v1 as components
+import os
+
+# --- GUI TAB CONFIGURATION ---
+# Change the order or labels here to update the GUI
+GUI_TAB_ORDER = [
+    {"id": "config", "label": "⚙️ Config"},
+    {"id": "file_mgmt", "label": "🗂️ File Management"},
+    {"id": "tools", "label": "🛠️ Tools"},
+    {"id": "files", "label": "📂 Input Files"},
+    {"id": "viz", "label": "🧬 Visualization"},
+    {"id": "exec", "label": "🚀 Execution"},
+    {"id": "results", "label": "📊 Results"},
+]
 
 st.set_page_config(page_title="PRISM Dashboard", layout="wide")
 
@@ -97,9 +110,17 @@ st.sidebar.markdown("---")
 st.sidebar.caption("PRISM v1.2.0 | Production Refactor")
 
 # Main Navigation
-tab_config, tab_files, tab_viz, tab_exec, tab_results, tab_tools, tab_file_mgmt = st.tabs([
-    "⚙️ Config", "📂 Files", "🧬 Visualization", "🚀 Execution", "📊 Results", "🛠️ Tools", "🗂️ File Management"
-])
+tabs = st.tabs([tab["label"] for tab in GUI_TAB_ORDER])
+tab_map = {tab["id"]: tabs[i] for i, tab in enumerate(GUI_TAB_ORDER)}
+
+# Map back to legacy variables for compatibility with existing code blocks
+tab_config = tab_map["config"]
+tab_files = tab_map["files"]
+tab_viz = tab_map["viz"]
+tab_exec = tab_map["exec"]
+tab_results = tab_map["results"]
+tab_tools = tab_map["tools"]
+tab_file_mgmt = tab_map["file_mgmt"]
 
 with tab_config:
     st.header("Global Pipeline Configuration")
@@ -176,7 +197,6 @@ with tab_config:
         
         if paradigm == "prism-power":
             with st.expander("⚡ PRISM Power Settings (JSON format)"):
-                # Handle cases where settings might be a dict or a Pydantic model
                 power_settings = st.session_state.config.PRISM_POWER_SETTINGS
                 if power_settings:
                     power_data = power_settings.model_dump() if hasattr(power_settings, 'model_dump') else power_settings
@@ -186,7 +206,6 @@ with tab_config:
         else:
             power_json = "{}"
 
-    # Advanced / Naming (Expander)
     with st.expander("📝 Naming & Path Constraints (Advanced)"):
         st.warning("Changing these may require re-organizing your input directory.")
         col_adv1, col_adv2 = st.columns(2)
@@ -207,7 +226,6 @@ with tab_config:
     st.markdown("---")
     if st.button("💾 Save All Configuration", width='stretch'):
             try:
-                # Update main params
                 st.session_state.config.TOTAL_HOMOLOGY_MODELS = total_models
                 st.session_state.config.TOP_MODELS_FOR_REFINEMENT = top_refine
                 st.session_state.config.LOOP_MODELS_PER_TARGET = loop_models
@@ -227,7 +245,6 @@ with tab_config:
                 st.session_state.config.USE_MANUAL_OPTIMIZATION_SELECTION = manual_opt
                 st.session_state.config.USE_MANUAL_FIXATION_SELECTION = manual_fix
                 
-                # Update complex params
                 st.session_state.config.MANUAL_OPTIMIZATION_RESIDUES = [int(r) for r in opt_res_str.split()] if opt_res_str else []
                 st.session_state.config.MANUAL_FIXATION_RESIDUES = [int(r) for r in fix_res_str.split()] if fix_res_str else []
                 st.session_state.config.PDB_TEMPLATE_FILES_NAMES = [n.strip() for n in pdb_names_str.split("\n") if n.strip()]
@@ -236,7 +253,6 @@ with tab_config:
                     power_data = json.loads(power_json)
                     st.session_state.config.PRISM_POWER_SETTINGS = power_data
                 
-                # Update advanced params
                 st.session_state.config.ALIGN_CODE_SEQUENCE = seq_code
                 st.session_state.config.CHAIN_ID = chain_id
                 st.session_state.config.BLK_CHAIN_ID = blk_chain
@@ -244,7 +260,6 @@ with tab_config:
                 st.session_state.config.SS2_FILE_BASENAME = ss2_base
                 st.session_state.config.MANUAL_ALIGNMENT_BASENAME = manual_ali_base
                 
-                # New advanced params
                 st.session_state.config.CUSTOM_INIFILE_BASENAME = ini_base
                 st.session_state.config.CUSTOM_RSRFILE_BASENAME = rsr_base
                 st.session_state.config.INPUT_DIR_NAME = input_dir_name
@@ -282,7 +297,6 @@ with tab_files:
     with col_up:
         st.subheader("📤 Upload Files")
         
-        # Mandatory for most runs
         fasta = st.file_uploader("Upload FASTA Sequence", type=["fasta", "fa"])
         if fasta:
             save_uploaded_file(fasta, st.session_state.config.INPUT_DIR)
@@ -296,7 +310,6 @@ with tab_files:
 
         st.divider()
         st.subheader("💡 Dynamic Requirements")
-        # Conditional help/status based on config
         if not st.session_state.config.PERFORM_PSIPRED_PREDICTION:
             st.warning("⚠️ Prediction is OFF: A .ss2 file is REQUIRED in input/")
             ss2 = st.file_uploader("Upload SS2 File", type=["ss2"])
@@ -409,7 +422,6 @@ with tab_tools:
 
         # 2. Define autocompletion logic (Common Prefix style)
         def autocomplete_args():
-            # Get latest typed text from the state
             typed = st.session_state.get('args_input_key', '')
             if not typed: return
             
@@ -437,12 +449,11 @@ with tab_tools:
             else:
                 st.session_state.tool_args_str = typed
 
-        # Perform autocompletion if triggered by a button in the PREVIOUS run
         if st.session_state.do_autocomplete:
             autocomplete_args()
             st.session_state.do_autocomplete = False
 
-        # 3. The Tool Arguments box (Pure Python)
+        # 3. The Tool Arguments box
         col_args, col_comp = st.columns([4, 1], vertical_alignment="bottom")
         
         with col_args:
@@ -456,13 +467,11 @@ with tab_tools:
                 st.session_state.do_autocomplete = True
                 st.rerun()
         
-        # Display the real-time command
         current_args = st.session_state.get('tool_args_str', '') or st.session_state.get('args_input_key', '')
         st.caption(f"🚀 Final Command: `{selected_tool} {current_args}`")
 
         if st.button("🛠️ Execute Tool", use_container_width=True, type="primary"):
             with st.spinner(f"Running {selected_tool}..."):
-                # Always use the most up-to-date value
                 final_args = st.session_state.args_input_key.split() if st.session_state.args_input_key else []
                 output = run_tool(selected_tool, final_args)
                 st.code(output, language="text")
@@ -473,7 +482,6 @@ with tab_file_mgmt:
     st.header("🗂️ Project File Management")
     st.markdown("Manage project folders and documents. Every box represents a folder in the project root.")
     
-    # 1. New Folder Bar
     with st.expander("➕ Create New Folder", expanded=False):
         col_new1, col_new2 = st.columns([3, 1], vertical_alignment="bottom")
         with col_new1:
@@ -491,18 +499,14 @@ with tab_file_mgmt:
 
     st.divider()
 
-    # 4. Folder Boxes
     root_dirs = list_root_dirs()
 
-    # 2. File Selection State
     if 'selected_paths' not in st.session_state:
         st.session_state.selected_paths = []
 
-    # 3. Global Actions
     action_col1, action_col2, action_col3, action_col4 = st.columns([1, 1, 1, 3], vertical_alignment="bottom")
     
     with action_col4:
-        # Destination folder for Move/Copy
         destination = st.selectbox("Target Folder for Move/Copy", ["."] + root_dirs, help="Select destination for move or copy actions")
 
     with action_col1:
@@ -523,7 +527,6 @@ with tab_file_mgmt:
             if st.session_state.selected_paths and destination:
                 moved_count = 0
                 for path in st.session_state.selected_paths:
-                    # Avoid moving a folder into itself
                     if destination != "." and destination in path:
                         st.error(f"Cannot move {path} into its own subfolder {destination}")
                         continue
@@ -543,7 +546,6 @@ with tab_file_mgmt:
                 copied_count = 0
                 for path in st.session_state.selected_paths:
                     target = os.path.join(destination, os.path.basename(path))
-                    # Handle name collision for copy
                     if os.path.exists(target):
                         target = os.path.join(destination, f"copy_{os.path.basename(path)}")
                         
@@ -558,14 +560,12 @@ with tab_file_mgmt:
     # 4. Folder Boxes
     root_dirs = list_root_dirs()
     if root_dirs:
-        # Display boxes in a grid-like fashion (2 columns)
         cols = st.columns(2)
         for i, directory in enumerate(root_dirs):
             with cols[i % 2]:
                 with st.container(border=True):
                     st.subheader(f"📁 {directory}")
                     
-                    # Selection for the folder itself
                     if st.checkbox(f"Select folder: {directory}", key=f"sel_dir_{directory}"):
                         if directory not in st.session_state.selected_paths:
                             st.session_state.selected_paths.append(directory)
@@ -573,11 +573,9 @@ with tab_file_mgmt:
                         if directory in st.session_state.selected_paths:
                             st.session_state.selected_paths.remove(directory)
 
-                    # List files in this directory
                     dir_files = os.listdir(directory)
                     if dir_files:
                         for f in sorted(dir_files):
-                            # Skip hidden files
                             if f.startswith("."): continue
                             
                             f_path = os.path.join(directory, f)
