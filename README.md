@@ -25,6 +25,8 @@ The pipeline enables high-fidelity modeling of loop insertions and flexible regi
 - **🎯 Smart Loop Detection**: Combines PSIPRED secondary structure predictions with experimental boundary analysis
 - **📈 Comprehensive Evaluation**: Automatic ranking using DOPE-HR scores with detailed CSV output
 - **🖥️ Interactive Dashboard**: A Streamlit-based GUI (`PRISM_Dashboard.py`) for configuration, 3D visualization, and real-time monitoring
+- **🎨 Themeable Design**: Choose between Default, Professional, High Contrast, and Dark Modern themes for an optimal visual experience
+- **📂 Project Management**: Integrated file management system for folder creation, moving, copying, and deleting within the project root
 
 ---
 
@@ -138,7 +140,8 @@ PRISM/                           # Repository root
 │   ├── prism_verify_rmsd.py     # Verifies experimental coordinate fidelity (CA RMSD)
 │   ├── calc_block_distance.py   # Calculates CA-to-BLK distances for BLOCK_REPULSION_RADIUS
 │   ├── unify_templates.py       # Resolves template overlaps and generates unified PDBs
-│   └── merge_experimental_templates.py # Merges multiple experimental structures into a unified template
+│   ├── merge_experimental_templates.py # Merges multiple experimental structures into a unified template
+│   └── run_alignment.py         # Standalone tool for alignment & "bullet-proofing" PIR files
 ├── input/                       # Input files (PDBs, FASTA, .ss2, .ali)
 ├── modeling_results/            # Output directory (models, rankings, logs)
 ├── test/                        # Self-contained test case (ready to run)
@@ -236,16 +239,26 @@ All outputs are written to `modeling_results/`:
 
 ## 5. The Streamlit Dashboard
 
-The `PRISM_Dashboard.py` provides a full-featured graphical interface:
+The `PRISM_Dashboard.py` provides a full-featured graphical interface for both configuration and execution, optimized for both desktop and HPC environments.
+
+### 🍱 Dashboard Tab Overview
 
 | Tab | Features |
 |-----|----------|
 | **⚙️ Config** | Edit all `config.yaml` parameters. Includes sections for Modeling & Refinement, Templates, PSIPRED, Execution Paradigm, and Manual Overrides. Save/reload configuration in real-time. |
-| **📁 Files** | Upload PDB templates, FASTA sequences, alignment files, and any additional files. View a file inventory with one-click deletion. |
-| **🔬 Visualization** | Interactive 3D visualization of PDB files using py3Dmol. Multiple rendering styles: ribbon, VDW, surface, line, spacefill. |
-| **⚡ Execution** | Launch the Nextflow pipeline and monitor real-time progress with automatic log updates. |
-| **📊 Results** | View ranked models, DOPE-HR score distributions, Z-score plots, and download the ranking CSV. |
-| **🔧 Tools** | Run `prep_prism_pdb.py`, `prism_verify_rmsd.py`, `calc_block_distance.py`, `unify_templates.py`, and `merge_experimental_templates.py` directly from the GUI. |
+| **🗂️ File Management** | Full-featured project file manager. Create folders, move, copy, and delete files or entire directories across the project root (e.g., moving results to a custom archive). |
+| **🛠️ Tools** | Run project utility scripts (e.g., `prep_prism_pdb.py`) directly from the GUI. Includes **intelligent autocompletion** for file path arguments to speed up your workflow. |
+| **📂 Input Files** | Upload PDB templates, FASTA sequences, and alignment files. View a live inventory of the `input/` directory with one-click deletion. |
+| **🧬 Visualization** | Interactive 3D visualization of PDB files (input or results) using py3Dmol. Customize rendering (cartoon, VDW, surface) and color schemes. |
+| **🚀 Execution** | Launch the Nextflow pipeline and monitor real-time progress with automatic streaming log updates. |
+| **📊 Results** | View ranked models and performance analytics. Includes dataframes of results, DOPEHR score distributions, and Z-score scatter plots. |
+
+### 🎨 GUI Personalization
+The sidebar includes a **Theme Selector** to tailor the interface to your environment:
+- **Default**: The standard clean Streamlit experience.
+- **Professional**: A soft-neutral theme optimized for report generation.
+- **High Contrast**: High-accessibility theme for low-vision or high-glare environments.
+- **Dark Modern**: A sleek, dark interface optimized for OLED screens and low-light work.
 
 **Remote Access (HPC):**  
 If running on a remote cluster, use SSH port forwarding to access the dashboard locally:
@@ -348,6 +361,7 @@ All parameters are set in `config.yaml` (or via the Dashboard).
 | `FASTA_FILE_BASENAME` | Target sequence file | `sequence_full.fasta` |
 | `SS2_FILE_BASENAME` | PSIPRED prediction file | `P1_NCL_secondary_structure.ss2` |
 | `MANUAL_ALIGNMENT_BASENAME` | Manual alignment file | `manual_template_FullSeq.ali` |
+| `MANUAL_ALIGNMENT_CDE_BASENAME` | CDE-annotated alignment file | `manual_template_FullSeq_cde.ali` |
 | `CUSTOM_INIFILE_BASENAME` | Precomputed initial structure | `precomputed_ini.pdb` |
 | `CUSTOM_RSRFILE_BASENAME` | Precomputed restraint file | `precomputed_rsr.rsr` |
 
@@ -557,6 +571,23 @@ python3 tools/merge_experimental_templates.py \
 - **Ligand Preservation**: All non-A chains from the first template are merged into a single Chain 'B' and renumbered sequentially following the protein.
 - **Dynamic Naming**: If `--output_pdb` is not provided, the tool generates a descriptive default name based on the template IDs.
 
+### 10.6. `run_alignment.py` — Standalone Alignment Tool
+
+Runs the PREREQ_CDE stage (alignment and secondary structure mapping) as a standalone step. This tool is useful for verifying or troubleshooting alignments before starting a full modeling run.
+
+```bash
+python3 tools/run_alignment.py
+```
+
+**What it does:**
+1.  **Reads `config.yaml`**: Uses the same configuration as the main pipeline.
+2.  **Runs Prereq-CDE**: Generates the `.ali` and `_cde.ali` files.
+3.  **Bullet-Proofing**: Standardizes PIR headers in the generated alignment files to use Modeller's universal shortcuts (`FIRST:@:END:@`). This makes the alignment more robust to PDB numbering shifts.
+4.  **Cleanup**: Automatically moves the generated alignment files to the `tools/` directory for direct inspection.
+
+> [!WARNING]
+> When using BLK residues, MODELLER may introduce redundant chain-break artifacts (`/`) in the alignment. The tool will warn you if manual cleaning is recommended.
+
 ---
 
 ## 11. HPC Configuration (`nextflow.config`)
@@ -624,6 +655,7 @@ To launch the pipeline in the background so it survives terminal closure:
 
 - **GUI Mode**: `pixi run gui-prism-persist`
 - **CLI Mode**: `pixi run terminal-prism-persist`
+- **Resume Mode**: `pixi run terminal-prism-persist-resume` (Continues from the last successful stage)
 
 ### 13.2. Monitoring Progress (Attach)
 You can "re-attach" to see the live logs at any time:
