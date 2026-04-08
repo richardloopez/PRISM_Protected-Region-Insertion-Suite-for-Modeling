@@ -105,12 +105,10 @@ def print_alignment_warning() -> None:
     logger.warning("ALIGNMENT POST-PROCESSING ADVISORY")
     logger.warning("!" * 80)
     logger.warning("When using BLK residues in Chain B (standard PRISM practice), MODELLER may")
-    logger.warning("introduce redundant chain-break artifacts ('/') in the template sequence")
-    logger.warning("and corresponding gaps ('-') in the target sequence.")
+    logger.warning("introduce redundant gaps ('-')")
     logger.warning("")
     logger.warning("If these artifacts are present in your generated .ali files, please:")
-    logger.warning("1. Manually remove the '/' from the main template sequence.")
-    logger.warning("2. Manually remove the extra '-' from the other sequences.")
+    logger.warning("2. Manually remove the extra '-' from the sequences.")
     logger.warning("!" * 80 + "\n")
 
 if __name__ == "__main__":
