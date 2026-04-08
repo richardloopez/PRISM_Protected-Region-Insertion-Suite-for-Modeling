@@ -190,46 +190,6 @@ def add_hetatm_repulsion_shield(model: Any, min_dist: float, only_loop_atoms: bo
     print(f"\n[ENVIRONMENT][add_hetatm_repulsion_shield] Added {count} repulsion restraints (Min Dist: {min_dist}A).")
     
 
-def fix_blk_chain_in_pdb(pdb_path: str, blk_chain_id: str) -> None:
-    '''
-    Post-process a PDB file to ensure that all BLK residues/atoms are assigned 
-    to the correct chain ID. This "fixes" Modeller's behavior of merging 
-    all target sequences into Chain A if no breaks are found.
-    '''
-    if not os.path.exists(pdb_path):
-        return
-
-    logger.info(f"[ENVIRONMENT][fix_blk_chain_in_pdb] Fixing BLK chain IDs in {pdb_path} to '{blk_chain_id}'")
-    
-    with open(pdb_path, 'r') as f:
-        lines = f.readlines()
-
-    fixed_lines = []
-    for line in lines:
-
-        if line.startswith("REMARK   6 MODELLER BLK RESIDUE"):
-            if ":" in line:
-                pre, post = line.rsplit(":", 1)
-                fixed_lines.append(f"{pre}:{blk_chain_id}\n")
-            else:
-                fixed_lines.append(line)
-            continue
-
-        if line.startswith(("ATOM  ", "HETATM")):
-            res_name = line[17:20].strip()
-            atom_name = line[12:16].strip()
-            if res_name == "BLK" or "BLK" in atom_name:
-                new_line = line[:21] + blk_chain_id + line[22:]
-                fixed_lines.append(new_line)
-            else:
-                fixed_lines.append(line)
-        else:
-            fixed_lines.append(line)
-
-    with open(pdb_path, 'w') as f:
-        f.writelines(fixed_lines)
-
-
 # ============================================================================
 #                        HOMOLOGY MODELING EXECUTION
 # ============================================================================
@@ -291,10 +251,6 @@ def run_automodel(env: Environ, align_file: str, job: Job,
         if os.path.exists(generated_ini) and os.path.exists(generated_rsr):
             shutil.move(generated_ini, config.CUSTOM_INIFILE_PATH)
             shutil.move(generated_rsr, config.CUSTOM_RSRFILE_PATH)
-            
-            if config.BLK_CHAIN_ID and str(config.BLK_CHAIN_ID).lower() not in ('none', 'null'):
-                fix_blk_chain_in_pdb(config.CUSTOM_INIFILE_PATH, config.BLK_CHAIN_ID)
-
             logger.info("[ENVIRONMENT][run_automodel] Precalculation complete. Restraints (.rsr) and Initial (.ini) files generated.")
             return []
         else:
