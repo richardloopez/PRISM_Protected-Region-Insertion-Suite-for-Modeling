@@ -246,19 +246,19 @@ The `PRISM_Dashboard.py` provides a full-featured graphical interface for both c
 | Tab | Features |
 |-----|----------|
 | **⚙️ Config** | Edit all `config.yaml` parameters. Includes sections for Modeling & Refinement, Templates, PSIPRED, Execution Paradigm, and Manual Overrides. Save/reload configuration in real-time. |
-| **🗂️ File Management** | Full-featured project file manager. Create folders, move, copy, and delete files or entire directories across the project root (e.g., moving results to a custom archive). |
-| **🛠️ Tools** | Run project utility scripts (e.g., `prep_prism_pdb.py`) directly from the GUI. Includes **intelligent autocompletion** for file path arguments to speed up your workflow. |
-| **📂 Input Files** | Upload PDB templates, FASTA sequences, and alignment files. View a live inventory of the `input/` directory with one-click deletion. |
-| **🧬 Visualization** | Interactive 3D visualization of PDB files (input or results) using py3Dmol. Customize rendering (cartoon, VDW, surface) and color schemes. |
-| **🚀 Execution** | Launch the Nextflow pipeline and monitor real-time progress with automatic streaming log updates. |
-| **📊 Results** | View ranked models and performance analytics. Includes dataframes of results, DOPEHR score distributions, and Z-score scatter plots. |
+| **🗂️ File Management** | Full-featured project file manager. Create folders, move, copy, and delete files or entire directories across the project root directly from the GUI. Includes selection-based bulk actions. |
+| **🛠️ Tools** | Run project utility scripts (e.g., `prep_prism_pdb.py`) directly from the GUI. Includes **intelligent autocompletion** for file path arguments to speed up your configuration. |
+| **📂 Input Files** | Upload PDB templates, FASTA sequences, and alignment files. Includes a dynamic inventory manager for the `input/` directory. |
+| **🧬 Visualization** | Interactive 3D visualization of PDB files (input or results) using py3Dmol. Customize rendering (cartoon, VDW, surface) and color schemes in real-time. |
+| **🚀 Execution** | Launch the Nextflow pipeline and monitor real-time progress with automatic streaming log updates in the GUI. |
+| **📊 Results** | View ranked models and performance analytics. Includes interactive Plotly charts of score distributions and Z-score scatter plots. |
 
 ### 🎨 GUI Personalization
 The sidebar includes a **Theme Selector** to tailor the interface to your environment:
 - **Default**: The standard clean Streamlit experience.
-- **Professional**: A soft-neutral theme optimized for report generation.
-- **High Contrast**: High-accessibility theme for low-vision or high-glare environments.
-- **Dark Modern**: A sleek, dark interface optimized for OLED screens and low-light work.
+- **Professional**: A soft-neutral theme with refined typography for better readability.
+- **High Contrast**: High-accessibility theme with high-visibility colors for low-vision environments.
+- **Dark Modern**: A sleek, dark interface optimized for OLED screens and low-light workstation environments.
 
 **Remote Access (HPC):**  
 If running on a remote cluster, use SSH port forwarding to access the dashboard locally:
@@ -426,28 +426,33 @@ Rank,Model Name,DOPEHR Score,DOPEHR Z-score
 
 ### 10.1. `prep_prism_pdb.py` — PDB Preparation
 
-Prepares raw PDB files for PRISM by splitting chains, renumbering atoms, and generating a preparation log.
+Prepares raw PDB files for PRISM by splitting protein and ligand chains, renumbering atoms for consistency, and generating a detailed preparation log. It also handles post-translational modifications (PTMs) by treating them as rigid-body attachments.
 
 **Mode: `prep` (Preparation)**
 ```bash
 python3 tools/prep_prism_pdb.py prep \
-    --input-pdb raw_structure.pdb \
-    --protein-chains A \
-    --ligand-chains B
+    raw_structure.pdb \
+    A \
+    B \
+    posttranslational=2 D-1,D-2,D-3:A-265 E-954:A-209
 ```
-- Splits the PDB into protein (Chain A) and ligand (Chain B) sections.
-- **Continuous, gapless residue numbering**: Both protein and ligand residues are renumbered sequentially (1, 2, 3...) to ensure pipeline consistency.
-- Generates `*_renum_HETATM.pdb` (main template) and a JSON log.
+*   **Arguments**: `[input_pdb]` `[protein_chains]` `[ligand_chains]` `[optional: ptm_args]`
+*   **PTM Support**: Specify attachments using `PTM-RESIDUE:ATTACH-RESIDUE` syntax. The script calculates relative coordinates for the PTM as a rigid body.
+*   **Status Reporting**: Explicitly confirms processing for each modification (e.g., `[PREP] PTM: E-954 attached to A-209 -> Processed 12 atoms.`).
+*   **Continuous Renumbering**: Renumbers protein and ligand residues sequentially (1, 2, 3...) to ensure pipeline compatibility.
+*   **Output**: Generates `*_prism_prep.pdb` and `*_prism_data.json` (log file).
 
 **Mode: `retro` (Restoration)**
 ```bash
 python3 tools/prep_prism_pdb.py retro \
-    --prism-output-pdb modeling_results/AUTO_1.pdb \
-    --original-pdb raw_structure.pdb \
-    --log-file prep_log.json
+    modeling_results/AUTO_1.pdb \
+    modeling_results/1A7C_prism_data.json \
+    A-265-new-A-288 A-209-new-A-232
 ```
-- Restores original ligand atoms and naming to a PRISM output model.
-- Uses the JSON log from the `prep` step to reverse-map atom names.
+*   **Arguments**: `[prism_output_pdb]` `[log_file]` `[optional: mappings]`
+*   **Residue Remapping**: Use the `ORIG-new-MODEL` syntax (e.g., `A-209-new-A-232`) to correctly place PTMs if the modeled structure shifted in numbering.
+*   **Preserved Numbering**: The residues in your modeled structure **maintain their numbering** in the final output. The mapping is used only as a spatial reference for PTM placement.
+*   **Metadata Restoration**: Restores original ligand atom names and record types (HETATM) based on the JSON log.
 
 ### 10.2. `prism_verify_rmsd.py` — Coordinate Fidelity Verification
 
@@ -620,56 +625,30 @@ process {
 
 ---
 
-## 12. Test Case
-
-The `test/` directory contains a self-contained, ready-to-run demo:
-
-```bash
-# Copy test files to root (or run from the test/ directory)
-cp test/config.yaml config.yaml
-cp test/input/* input/
-
-# Run the demo (from terminal)
-pixi run terminal-prism
-
-# Run the demo (from Streamlit)
-pixi run streamlit-prism
-```
-
-**What's included:**
-- 4 template PDBs (9CB5 experimental + 2fc8 + 2fc9 + AlphaFold)
-- Pre-vetted manual alignment (`manual_template_FullSeq.ali`)
-- Target FASTA sequence
-- Pre-configured `config.yaml` with `prism-power` paradigm
-
-**Note:** The test case uses a low replica count for speed. Running `tools/prism_verify_rmsd.py` on the results may show RMSD > 0.0 — this is expected with few replicas.
-
----
-
-## 13. Persistent Sessions & Multi-Working
+## 12. Persistent Sessions & Multi-Working
 
 PRISM includes built-in automation for persistent execution. This is critical for long-running protein modeling jobs on HPC nodes where terminal disconnections are common.
 
-### 13.1. "Fire and Forget" Mode
+### 12.1. "Fire and Forget" Mode
 To launch the pipeline in the background so it survives terminal closure:
 
 - **GUI Mode**: `pixi run gui-prism-persist`
 - **CLI Mode**: `pixi run terminal-prism-persist`
 - **Resume Mode**: `pixi run terminal-prism-persist-resume` (Continues from the last successful stage)
 
-### 13.2. Monitoring Progress (Attach)
+### 12.2. Monitoring Progress (Attach)
 You can "re-attach" to see the live logs at any time:
 
 - **GUI Logs**: `pixi run attach-gui`
 - **CLI Logs**: `pixi run attach-terminal`
 
-### 13.3. Stopping a Session
+### 12.3. Stopping a Session
 To safely terminate a background session:
 
 - `pixi run stop-gui`
 - `pixi run stop-terminal`
 
-### 13.4. Running Multiple Instances
+### 12.4. Running Multiple Instances
 You can run multiple independent PRISM instances concurrently:
 1.  **Isolated Folders**: Use separate folders for each experiment. Each folder will maintain its own hidden `.prism-*.pid` and `.prism-*.log` files.
 2.  **Independent Results**: Each run keeps its own `modeling_results/`, `config.yaml`, and Nextflow `work/` directory.
@@ -677,10 +656,11 @@ You can run multiple independent PRISM instances concurrently:
 
 ---
 
-## 14. Portability
+---
+
+## 13. Portability
 
 PRISM is fully portable without requiring root privileges:
-
 
 - **Pixi** installs everything (Python, MODELLER, Nextflow, Streamlit) in a local environment
 - **Supported platforms**: Linux (all distributions), macOS (Intel & Apple Silicon), Windows via WSL2
