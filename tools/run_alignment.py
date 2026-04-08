@@ -108,7 +108,7 @@ def print_alignment_warning() -> None:
     logger.warning("introduce redundant gaps ('-')")
     logger.warning("")
     logger.warning("If these artifacts are present in your generated .ali files, please:")
-    logger.warning("2. Manually remove the extra '-' from the sequences.")
+    logger.warning("Manually remove the extra '-' from the sequences.")
     logger.warning("!" * 80 + "\n")
 
 if __name__ == "__main__":
