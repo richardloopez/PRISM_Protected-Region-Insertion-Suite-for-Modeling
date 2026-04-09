@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# PRISM Tool: merge_experimental_to_predicted (Biopython version)
-# Author: Antigravity (Adapted for Biopython - FIXED)
+# PRISM Tool: merge_experimental_to_predicted 
+# Author: 
 
 import sys
 import argparse
