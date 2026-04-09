@@ -54,7 +54,10 @@ def main() -> None:
 
         results_dir = Path(config.MODELING_RESULTS_DIR)
         for ali_file in results_dir.glob("*.ali"):
-            dest = tools_dir / ali_file.name
+            if Path.cwd().name == "output_tools":
+                dest = Path.cwd() / ali_file.name
+            else:
+                dest = tools_dir / ali_file.name
             shutil.move(str(ali_file), str(dest))
             logger.info(f"Moved {ali_file.name} -> {dest}")
             
@@ -108,7 +111,7 @@ def print_alignment_warning() -> None:
     logger.warning("introduce redundant gaps ('-')")
     logger.warning("")
     logger.warning("If these artifacts are present in your generated .ali files, please:")
-    logger.warning("Manually remove the extra '-' from the sequences.")
+    logger.warning("2. Manually remove the extra '-' from the sequences.")
     logger.warning("!" * 80 + "\n")
 
 if __name__ == "__main__":
