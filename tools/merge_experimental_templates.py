@@ -5,9 +5,14 @@
 import sys
 import argparse
 import os
+import shutil
+from pathlib import Path
 from typing import Dict
 
 from Bio.PDB import PDBParser, Superimposer, PDBIO, Structure, Model, Chain
+
+project_root = Path(__file__).resolve().parent.parent
+input_dir = project_root / "input"
 
 def parse_pir_sequences(align_file: str):
     '''Manual parsing of PIR file to get full alignment strings including gaps.'''
@@ -29,6 +34,25 @@ def parse_pir_sequences(align_file: str):
         if curr_code:
             sequences[curr_code] = "".join(curr_seq).replace('\n', '').replace(' ', '')
     return sequences, all_codes
+
+def copy_to_input(filename):
+    '''Copies a file to the ../input/ directory if it exists.'''
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    input_dir = os.path.join(os.path.dirname(script_dir), "input")
+    if os.path.exists(input_dir) and os.path.isdir(input_dir):
+        try:
+            shutil.copy2(filename, os.path.join(input_dir, os.path.basename(filename)))
+            print(f" [COPY] Copied {filename} to {input_dir}")
+        except Exception as e:
+            print(f" [COPY] Warning: Could not copy {filename} to {input_dir}: {e}")
+    else:
+        local_input = os.path.join(os.getcwd(), "input")
+        if os.path.exists(local_input) and os.path.isdir(local_input):
+            try:
+                shutil.copy2(filename, os.path.join(local_input, os.path.basename(filename)))
+                print(f" [COPY] Copied {filename} to {local_input}")
+            except Exception as e:
+                print(f" [COPY] Warning: Could not copy {filename} to {local_input}: {e}")
 
 def get_all_residues(structure):
     '''
@@ -76,7 +100,7 @@ def merge_structures(align_file: str, ref_code: str, output_pdb: str = None):
 
     parser = PDBParser(QUIET=True)
     
-    ref_pdb_path = os.path.join(os.getcwd(), f"{ref_code}")
+    ref_pdb_path = input_dir / f"{ref_code}"
     if not os.path.exists(ref_pdb_path):
         print(f"Error: Could not find PDB for reference {ref_pdb_path}")
         return
@@ -88,7 +112,7 @@ def merge_structures(align_file: str, ref_code: str, output_pdb: str = None):
     
     for temp_code in templates:
         print(f"Superposing {temp_code} onto {ref_code}...")
-        temp_pdb = os.path.join(os.getcwd(), f"{temp_code}")
+        temp_pdb = input_dir / f"{temp_code}"
         
         if not os.path.exists(temp_pdb):
             print(f"  Warning: Could not find PDB for {temp_code}. Skipping.")
@@ -201,6 +225,8 @@ def merge_structures(align_file: str, ref_code: str, output_pdb: str = None):
         f.write(target_seq + "*\n")
         
     print(f"Merged alignment written to {output_ali}")
+    
+    copy_to_input(output_pdb)
 
 def main():
     parser = argparse.ArgumentParser(description="Merge multiple experimental structures aligned to a predicted model using Biopython.")
