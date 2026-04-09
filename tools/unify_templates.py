@@ -212,11 +212,13 @@ def unify_templates(align_file: str, overlap_limit: int):
             orig_pdb = f"{temp.code.strip()}.pdb"
             
         if os.path.exists(orig_pdb):
-            output_pdb = f"{temp.code.split('.')[0]}_unified.pdb"
+            output_dir = os.path.dirname(align_file)
+            output_pdb_name = f"{temp.code.split('.')[0]}_unified.pdb"
+            output_pdb = os.path.join(output_dir, output_pdb_name)
             
             renumber_pdb(orig_pdb, residues_to_keep, output_pdb)
             print(f"  Generated {output_pdb}")
-            temp.atom_file = output_pdb
+            temp.atom_file = output_pdb_name
         else:
             print(f"  Error: {orig_pdb} not found. Cannot modify structure.")
 
