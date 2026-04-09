@@ -4,6 +4,7 @@ import sys
 import os
 import json
 import math
+import shutil
 
 # ====================================================================================
 #                                 MATH HELPERS
@@ -90,6 +91,25 @@ def parse_remap_string(s):
     o_id, m_id = parse_id(orig_s), parse_id(model_s)
     if not o_id or not m_id: return None
     return o_id, m_id
+
+def copy_to_input(filename):
+    '''Copies a file to the ../input/ directory if it exists.'''
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    input_dir = os.path.join(os.path.dirname(script_dir), "input")
+    if os.path.exists(input_dir) and os.path.isdir(input_dir):
+        try:
+            shutil.copy2(filename, os.path.join(input_dir, os.path.basename(filename)))
+            print(f" [COPY] Copied {filename} to {input_dir}")
+        except Exception as e:
+            print(f" [COPY] Warning: Could not copy {filename} to {input_dir}: {e}")
+    else:
+        local_input = os.path.join(os.getcwd(), "input")
+        if os.path.exists(local_input) and os.path.isdir(local_input):
+            try:
+                shutil.copy2(filename, os.path.join(local_input, os.path.basename(filename)))
+                print(f" [COPY] Copied {filename} to {local_input}")
+            except Exception as e:
+                print(f" [COPY] Warning: Could not copy {filename} to {local_input}: {e}")
 
 # ====================================================================================
 #                                   PREP LOGIC
@@ -297,6 +317,8 @@ def run_prep(input_path, prot_chains_str, lig_chains_str, ptm_args=[]):
     print(f"[PREP] Success!")
     print(f" > Generated PDB: {out_pdb}")
     print(f" > Generated Log: {out_log}")
+
+    copy_to_input(out_pdb)
 
 
 # ====================================================================================
