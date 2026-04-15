@@ -214,8 +214,8 @@ graph TD
     subgraph "Stage II: Structural Alignment Review"
         ALIGN --> REV{Manual Inspection}
         REV -- "Errors Found" --> FIX[Adjust Alignment Parameters]
-        FIX --> ALIGN
-        REV -- "Accurate" --> MERGE[merge_experimental_templates.py]
+        FIX --> MERGE[merge_experimental_templates.py]
+        REV -- "Accurate" --> MERGE
         MERGE --> UNIFY[unify_templates.py]
     end
 
@@ -227,8 +227,8 @@ graph TD
 
     subgraph "Stage IV: Validation & Data Restoration"
         COMP --> RMSD[prism_verify_rmsd.py]
-        COMP --> RETRO[prep_prism_pdb.py --mode retro]
         RMSD --> FINAL[Final Validated Model]
+        RMSD --> RETRO[prep_prism_pdb.py --mode retro]
         RETRO --> FINAL
     end
 
