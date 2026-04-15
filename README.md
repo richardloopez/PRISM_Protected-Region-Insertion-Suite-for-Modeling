@@ -204,6 +204,7 @@ graph TD
     end
 
     subgraph "Stage I: Template Sanitization"
+        1CONFIG[config.yaml first tuning] --> ALIGN
         A --> PREP[prep_prism_pdb.py --mode prep]
         PREP --> DIST[calc_block_distance.py]
         B --> ALIGN
@@ -220,8 +221,8 @@ graph TD
     end
 
     subgraph "Stage III: Production Execution"
-        UNIFY --> CONFIG[config.yaml tuning]
-        CONFIG --> EXEC["Execution (GUI or Terminal)"]
+        UNIFY --> 2CONFIG[config.yaml second tuning]
+        2CONFIG --> EXEC["Execution (GUI or Terminal)"]
         EXEC --> COMP((Modeling Complete))
     end
 
