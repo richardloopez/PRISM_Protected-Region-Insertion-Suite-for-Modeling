@@ -1,5 +1,11 @@
 # 🛡️ PRISM: Protected-Region Insertion Suite for Modeling
 
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Type Checking: Mypy](https://img.shields.io/badge/type--checking-mypy-blue)](https://mypy.readthedocs.io/)
+[![Version: 1.0.0](https://img.shields.io/badge/version-1.0.0-success.svg)](#)
+
 **A pipeline for high-fidelity protein homology modeling and loop refinement with guaranteed preservation of experimental coordinates.**
 
 Author: Richard Lopez-Corbalan  
@@ -24,9 +30,33 @@ The pipeline enables high-fidelity modeling of loop insertions and flexible regi
 - **🔬 Advanced Flank Control**: Granular user control over the behavior of experimental flanks (the junction between fixed and modeled regions)
 - **🎯 Smart Loop Detection**: Combines PSIPRED secondary structure predictions with experimental boundary analysis
 - **📈 Comprehensive Evaluation**: Automatic ranking using DOPE-HR scores with detailed CSV output
-- **🖥️ Interactive Dashboard**: A Streamlit-based GUI (`PRISM_Dashboard.py`) for configuration, 3D visualization, and real-time monitoring
+- **🖥️ Interactive Dashboard**: A Streamlit-based GUI (`PRISM/dashboard.py`) for configuration, 3D visualization, and real-time monitoring
 - **🎨 Themeable Design**: Choose between Default, Professional, High Contrast, and Dark Modern themes for an optimal visual experience
 - **📂 Project Management**: Integrated file management system for folder creation, moving, copying, and deleting within the project root
+
+---
+
+## Table of Contents
+
+- [0. Overview](#0-overview)
+- [1. The Problem PRISM Solves](#1-the-problem-prism-solves)
+- [2. Best Practices](#2-best-practices)
+- [3. Installation](#3-installation)
+- [4. Standard Operating Procedure (SOP)](#4-standard-operating-procedure-sop)
+- [5. The Streamlit Dashboard](#5-the-streamlit-dashboard)
+- [6. Pipeline Workflow](#6-pipeline-workflow)
+- [7. Configuration Reference](#7-configuration-reference)
+- [8. Execution Paradigms](#8-execution-paradigms)
+- [9. Model Nomenclature](#9-model-nomenclature)
+- [10. Utility Tools (tools/)](#10-utility-tools-tools)
+- [11. HPC Configuration (nextflow.config)](#11-hpc-configuration-nextflowconfig)
+- [12. Persistent Sessions & Multi-Working](#12-persistent-sessions--multi-working)
+- [13. Portability](#13-portability)
+- [14. Technical Details](#14-technical-details)
+- [15. Citation](#15-citation)
+- [16. Support](#16-support)
+- [17. Acknowledgments](#17-acknowledgments)
+- [18. License](#18-license)
 
 ---
 
@@ -84,9 +114,9 @@ The code is designed to receive **clean inputs**. Use the included `tools/prep_p
 As mentioned in Section 1.3, MODELLER averages templates. To achieve a 0.0 RMSD on your experimental core, the `prism-power` execution paradigm should be used.
 
 - **Use `EXECUTION_PARADIGM: prism-power`**:
-    - Configure `PRISM_POWER_SETTINGS` in `config.yaml` with a `precalculation` phase (high replicas, e.g., 1000:1) and a `precomputed` phase (lower replicas, e.g., 100:1).
-    - The `precalculation` phase generates the initial `.ini` and `.rsr` files with extreme bias toward the experimental PDB.
-    - The `precomputed` phase then uses those files for the actual model generation with a more balanced replica count.
+    - Configure `PRISM_POWER_SETTINGS` in `config.yaml` with a `PRECALCULATION` phase (high replicas, e.g., 1000:1) and a `PRECOMPUTED` phase (lower replicas, e.g., 100:1).
+    - The `PRECALCULATION` phase generates the initial `.ini` and `.rsr` files with extreme bias toward the experimental PDB.
+    - The `PRECOMPUTED` phase then uses those files for the actual model generation with a more balanced replica count.
     - This ensures the experimental coordinates are not distorted by other templates (like AlphaFold models) during the initial AutoModel averaging.
     - If RMSD > 0.0 when using `tools/prism_verify_rmsd.py`, the cause is likely an insufficient number of replicas.
 
@@ -130,6 +160,7 @@ PRISM/                           # Repository root
 ├── PRISM/                       # Core Python package
 │   ├── config.py                # Centralized Pydantic configuration (loads config.yaml)
 │   ├── controller.py            # Pipeline stage controller (dispatches stages)
+│   ├── dashboard.py             # Streamlit GUI (interactive dashboard)
 │   ├── modeling_engine.py       # Custom MODELLER classes (FixedRegionAutoModel, FixedRegionLoopModel)
 │   ├── psipred_client.py        # PSIPRED web API client
 │   ├── utils.py                 # Alignment, secondary structure, ranking utilities
@@ -150,96 +181,100 @@ PRISM/                           # Repository root
 │   └── ...
 ├── config.yaml                  # Main pipeline configuration
 ├── pixi.toml                    # Environment & dependency manager (Pixi)
-├── orchestrator.nf              # Nextflow DSL2 workflow (SLURM orchestration)
-├── nextflow.config              # Nextflow resource allocation (CPUs, memory)
-├── PRISM_Dashboard.py           # Streamlit GUI (interactive dashboard)
+├── pipeline/                    # Nextflow pipeline orchestration
+│   ├── orchestrator.nf          # Nextflow DSL2 workflow (SLURM orchestration)
+│   └── nextflow.config          # Nextflow resource allocation (CPUs, memory)
 └── README.md                    # This file
 ```
 
 ---
 
-## 4. Quick Start
+## 4. Standard Operating Procedure (SOP)
 
-### 4.1. Prepare Input Files
+This protocol outlines the standard sequence for high-fidelity protein modeling using the PRISM pipeline. Adherence to these steps ensures 0.0 Å RMSD coordinate protection and proper handling of bound ligands and post-translational modifications.
 
-Place the following files in the `input/` directory:
+### 4.1. Workflow Overview
 
-| File | Required | Description |
-|------|----------|-------------|
-| `sequence_full.fasta` | ✅ Yes | Target protein sequence in FASTA format |
-| Template PDB files (`.pdb`) | ✅ Yes | One or more experimental structures as templates |
-| `P1_NCL_secondary_structure.ss2` | Conditional | PSIPRED prediction. Required if `PERFORM_PSIPRED_PREDICTION: false` |
-| `manual_template_FullSeq.ali` | Conditional | Manual alignment in PIR format. Required if `USE_MANUAL_ALIGNMENT: true` |
-| `precomputed_ini.pdb` | Optional | Precomputed average structure (for `precomputed` paradigm) |
-| `precomputed_rsr.rsr` | Optional | Precomputed restraint file (for `precomputed` paradigm) |
+```mermaid
+graph TD
+    subgraph "Input Layer"
+        A[Raw PDB Templates]
+        B[FASTA Sequence]
+        C[SS2 Prediction]
+    end
 
-### 4.2. Configure Parameters
+    subgraph "Stage I: Template Sanitization"
+        A --> PREP[prep_prism_pdb.py --mode prep]
+        PREP --> DIST[calc_block_distance.py]
+        DIST --> ALIGN[run_alignment.py]
+    end
 
-Edit `config.yaml` to match your project. See [Section 7](#7-configuration-reference) for a full parameter reference.
+    subgraph "Stage II: Structural Alignment Review"
+        ALIGN --> REV{Manual Inspection}
+        REV -- "Errors Found" --> ALIGN
+        REV -- "Accurate" --> MERGE[merge_experimental_templates.py]
+        MERGE --> UNIFY[unify_templates.py]
+    end
 
-```yaml
-# --- Template Selection ---
-PDB_TEMPLATE_FILES_NAMES:
-  - 9CB5_renum_HETATM.pdb     # Main template (first = experimental core)
-  - AF_renum.pdb               # AlphaFold or additional template
+    subgraph "Stage III: Production Execution"
+        UNIFY --> CONFIG[config.yaml tuning]
+        CONFIG --> EXEC["Execution (GUI or Terminal)"]
+        EXEC --> COMP((Modeling Complete))
+    end
 
-# --- Modeling Scale ---
-MODELLER_CORES: 10              # CPU threads for MODELLER
-TOTAL_PARALLEL_JOBS: 5          # Nextflow parallel job splits
-TOTAL_HOMOLOGY_MODELS: 10000    # Total AutoModel structures to generate
-TOP_MODELS_FOR_REFINEMENT: 20   # Top N models selected for loop refinement
-LOOP_MODELS_PER_TARGET: 10      # Loop models generated per top model
-
-# --- Execution Mode ---
-EXECUTION_PARADIGM: prism-power # Recommended: 'prism-power', 'precalculation', 'precomputed', or 'normal'
-
-# --- PRISM Power Settings (only for 'prism-power' paradigm) ---
-PRISM_POWER_SETTINGS:
-  precalculation:               # Phase 1: Generate .ini/.rsr with heavy experimental bias
-    9CB5_renum_HETATM.pdb: 1000
-    AF_renum.pdb: 1
-  precomputed:                  # Phase 2: Use .ini/.rsr for actual model generation
-    9CB5_renum_HETATM.pdb: 100
-    AF_renum.pdb: 1
+    subgraph "Stage IV: Validation & Data Restoration"
+        COMP --> RMSD[prism_verify_rmsd.py]
+        COMP --> RETRO[prep_prism_pdb.py --mode retro]
+        RMSD --> FINAL[Final Validated Model]
+        RETRO --> FINAL
+    end
 ```
 
-### 4.3. Run the Pipeline
+### 4.2. Detailed Procedural Steps
 
-**Option A: Interactive Dashboard**
-```bash
-pixi run gui-prism          # Standard launch (attached to terminal)
-pixi run gui-prism-persist  # Persistent launch (safe to close terminal)
-```
-This launches the Streamlit Dashboard where you can:
-- Edit all configuration parameters in a visual interface
-- Upload/delete input files
-- Launch and monitor the pipeline in real-time
-- Visualize results in interactive 3D
+#### Phase 1: Environment & Input Preparation
+1.  **System Initialization**: Run `pixi run setup` to verify the environment and MODELLER license.
+2.  **Input Consolidation**: Place `.pdb`, `.fasta`, and optional `.ss2` files into the `input/` directory.
 
-**Option B: Terminal / HPC Cluster**
-```bash
-pixi run terminal-prism          # Standard launch
-pixi run terminal-prism-persist  # Persistent launch
-```
-This runs the full Nextflow pipeline directly. On a SLURM cluster, Nextflow automatically submits each stage as a separate job via the configuration in `nextflow.config`.
+#### Phase 2: Template Pre-processing
+1.  **Protein Sanitization**: Use `tools/prep_prism_pdb.py (prep mode)` on all raw PDBs. This renumbers residues sequentially and splits protein/ligand chains to meet pipeline requirements.
+2.  **Repulsion Analysis**: If ligands/HETATMs are present, run `tools/calc_block_distance.py` to identify the minimum distance to CA atoms. Update `config.yaml: BLOCK_REPULSION_RADIUS` with this value (or keep default if unsure).
+3.  **Alignment Generation**: Run `tools/run_alignment.py` to generate the initial PIR alignment.
+4.  **Review**: **[CRITICAL]** Manually inspect the generated `.ali` file in `output_tools/`. Correct errors and append `_reviewed` to the filename once validated.
+5.  **Multi-Template Merger**: If using $>1$ experimental template, use `tools/merge_experimental_templates.py` to create a unified experimental coordinate set.
+6.  **Template Unification**: Execute `tools/unify_templates.py` to resolve overlaps between experimental and predicted models. This preserves the 0.0 RMSD priority for the primary template.
 
+#### Phase 3: Configuration & Execution
+1.  **Nomenclature Engineering**: Update `config.yaml` using the nomenclature standards in Section 4.3.
+2.  **Power Weighting**: Configure `PRISM_POWER_SETTINGS` for the `prism-power` paradigm (see Section 8).
+3.  **Pipeline Launch**:
+    *   **GUI**: `pixi run gui-prism-persist` (Interactive, 3D visualization)
+    *   **Terminal**: `pixi run terminal-prism-persist` (HPC/Batch mode)
 
-### 4.4. Check Results
+#### Phase 4: Validation & Restoration
+1.  **Coordinate Drift Audit**: Run `tools/prism_verify_rmsd.py` to confirm experimental region fidelity (Target: 0.000 Å).
+2.  **Structure Restoration**: Use `tools/prep_prism_pdb.py (retro mode)` on the best-ranked models. This reinstates original PDB headers, HETATM atom names, and rigid-body PTMs using the metadata JSON generated in Phase 2.
 
-All outputs are written to `modeling_results/`:
+### 4.3. Standard Nomenclature Reference
 
-| File | Description |
-|------|-------------|
-| `AUTO_*.pdb` | Initial homology models (ranked by DOPE-HR quality) |
-| `AUTO_*_LOOP*_R*.pdb` | Loop-refined models with traceable nomenclature |
-| `final_ranking.csv` | Complete ranking with DOPE-HR scores and Z-scores |
-| `modeling_results/logs/` | Per-stage log files for debugging |
+To maintain pipeline stability, follow these naming conventions in your `config.yaml`:
+
+| Parameter | Recommended Naming Pattern / Rule |
+|-----------|----------------------------------|
+| `PDB_TEMPLATE_FILES_NAMES` | Use sanitized names: `{PDBID}_prism_prep_unified.pdb` |
+| `MANUAL_ALIGNMENT_BASENAME` | `{PDBID}_prism_prep.pdb_{ALIGN_CODE}_reviewed_merged_unified.ali` |
+| `BLOCK_REPULSION_RADIUS` | Use value derived from `calc_block_distance.py` (Default: 100.0) |
+| `PRISM_POWER_SETTINGS` | **Experimental**: `{PDBID}_prism_prep_unified.pdb` or `{Merged}_experimental_unified.pdb` |
+
+> [!NOTE]
+> The `prism-power` paradigm automatically manages the transition between heavy experimental bias (Phase 1) and model generation (Phase 2), ensuring coordinates remain fixed during Initial Averaging.
+
 
 ---
 
 ## 5. The Streamlit Dashboard
 
-The `PRISM_Dashboard.py` provides a full-featured graphical interface for both configuration and execution, optimized for both desktop and HPC environments.
+The `PRISM/dashboard.py` provides a full-featured graphical interface for both configuration and execution, optimized for both desktop and HPC environments.
 
 ### 🍱 Dashboard Tab Overview
 
@@ -356,12 +391,12 @@ All parameters are set in `config.yaml` (or via the Dashboard).
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
+| `ALIGN_CODE_SEQUENCE` | Code for target sequence in alignment | `FullSeq` |
 | `CHAIN_ID` | Protein chain identifier | `A` |
 | `BLK_CHAIN_ID` | Ligand/HETATM chain identifier | `B` |
 | `FASTA_FILE_BASENAME` | Target sequence file | `sequence_full.fasta` |
 | `SS2_FILE_BASENAME` | PSIPRED prediction file | `P1_NCL_secondary_structure.ss2` |
 | `MANUAL_ALIGNMENT_BASENAME` | Manual alignment file | `manual_template_FullSeq.ali` |
-| `MANUAL_ALIGNMENT_CDE_BASENAME` | CDE-annotated alignment file | `manual_template_FullSeq_cde.ali` |
 | `CUSTOM_INIFILE_BASENAME` | Precomputed initial structure | `precomputed_ini.pdb` |
 | `CUSTOM_RSRFILE_BASENAME` | Precomputed restraint file | `precomputed_rsr.rsr` |
 
@@ -378,7 +413,7 @@ All parameters are set in `config.yaml` (or via the Dashboard).
 | Parameter | Description |
 |-----------|-------------|
 | `PDB_TEMPLATE_FILES_NAMES` | Ordered list of PDB template filenames. The **first entry** is always the main experimental template. |
-| `PRISM_POWER_SETTINGS` | Per-template replica weights for the `prism-power` paradigm. Contains a `precalculation` and a `precomputed` dictionary mapping template filenames to replica counts. |
+| `PRISM_POWER_SETTINGS` | Per-template replica weights for the `prism-power` paradigm. Contains a `PRECALCULATION` and a `PRECOMPUTED` dictionary mapping template filenames to replica counts. |
 
 ---
 
