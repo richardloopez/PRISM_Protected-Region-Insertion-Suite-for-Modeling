@@ -227,7 +227,6 @@ graph TD
 
     subgraph "Stage IV: Validation & Data Restoration"
         COMP --> RMSD[prism_verify_rmsd.py]
-        RMSD --> FINAL[Final Validated Model]
         RMSD --> RETRO[prep_prism_pdb.py --mode retro]
         RETRO --> FINAL
     end
