@@ -211,7 +211,7 @@ graph TD
 
     subgraph "Stage II: Structural Alignment Review"
         ALIGN --> REV{Manual Inspection}
-        REV -- "Errors Found" -- "Correct" --> ALIGN
+        REV -- "Errors Found" --> ALIGN
         REV -- "Accurate" --> MERGE[merge_experimental_templates.py]
         MERGE --> UNIFY[unify_templates.py]
     end
