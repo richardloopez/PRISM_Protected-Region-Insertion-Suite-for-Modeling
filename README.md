@@ -200,18 +200,21 @@ graph TD
     subgraph "Input Layer"
         A[Raw PDB Templates]
         B[FASTA Sequence]
-        C[SS2 Prediction]
+        C[Secondary Structure SS2]
     end
 
     subgraph "Stage I: Template Sanitization"
         A --> PREP[prep_prism_pdb.py --mode prep]
         PREP --> DIST[calc_block_distance.py]
+        B --> ALIGN
+        C --> ALIGN
         DIST --> ALIGN[run_alignment.py]
     end
 
     subgraph "Stage II: Structural Alignment Review"
         ALIGN --> REV{Manual Inspection}
-        REV -- "Errors Found" --> "Correct" --> ALIGN
+        REV -- "Errors Found" --> FIX[Adjust Alignment Parameters]
+        FIX --> ALIGN
         REV -- "Accurate" --> MERGE[merge_experimental_templates.py]
         MERGE --> UNIFY[unify_templates.py]
     end
@@ -228,6 +231,10 @@ graph TD
         RMSD --> FINAL[Final Validated Model]
         RETRO --> FINAL
     end
+
+    style REV fill:#fff4dd,stroke:#d4a017
+    style COMP fill:#e1f5fe,stroke:#01579b
+    style FINAL fill:#e8f5e9,stroke:#2e7d32
 ```
 
 ### 4.2. Detailed Procedural Steps
