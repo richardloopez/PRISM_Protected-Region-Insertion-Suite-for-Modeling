@@ -1,0 +1,94 @@
+/* =============================================================================
+ * PRISM Dashboard — Theme Styles
+ * =============================================================================
+ * Extracted from PRISM_Dashboard.py for maintainability.
+ * Each class corresponds to a Streamlit theme selectable via the sidebar.
+ * ============================================================================= */
+
+/* --- Professional Theme --- */
+.theme-professional.stApp {
+    background-color: #f0f2f6 !important;
+}
+
+/* --- High Contrast Theme --- */
+.theme-high-contrast.stApp {
+    background-color: #000000 !important;
+    color: #FFFF00 !important;
+}
+.theme-high-contrast .stMarkdown p,
+.theme-high-contrast .stMarkdown h1,
+.theme-high-contrast .stMarkdown h2,
+.theme-high-contrast .stMarkdown h3,
+.theme-high-contrast .stMarkdown h4,
+.theme-high-contrast label,
+.theme-high-contrast .stWidgetLabel p {
+    color: #FFFF00 !important;
+}
+.theme-high-contrast [data-testid="stImage"],
+.theme-high-contrast [data-testid="stArrowDataTable"],
+.theme-high-contrast .stPlotlyChart {
+    background-color: #111111 !important;
+    border: 2px solid #FFFF00 !important;
+    padding: 10px;
+    border-radius: 5px;
+}
+.theme-high-contrast button {
+    background-color: #FFFF00 !important;
+    color: #000000 !important;
+    border: 2px solid #FFFFFF !important;
+    font-weight: bold !important;
+}
+.theme-high-contrast button:hover {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+}
+.theme-high-contrast .stTextInput input,
+.theme-high-contrast .stTextArea textarea,
+.theme-high-contrast .stNumberInput input {
+    background-color: #222222 !important;
+    color: #FFFF00 !important;
+    border: 2px solid #FFFF00 !important;
+}
+.theme-high-contrast section[data-testid="stSidebar"] {
+    background-color: #000000 !important;
+    border-right: 2px solid #FFFF00 !important;
+}
+.theme-high-contrast section[data-testid="stSidebar"] * {
+    color: #FFFF00 !important;
+}
+
+/* --- Dark Modern Theme --- */
+.theme-dark-modern.stApp {
+    background-color: #0e1117 !important;
+    color: white !important;
+}
+.theme-dark-modern .stApp p,
+.theme-dark-modern .stApp h1,
+.theme-dark-modern .stApp h2,
+.theme-dark-modern .stApp h3,
+.theme-dark-modern .stApp h4,
+.theme-dark-modern .stApp label,
+.theme-dark-modern .stApp span {
+    color: white !important;
+}
+.theme-dark-modern div.stButton > button {
+    background-color: #262730 !important;
+    color: white !important;
+    border: 1px solid #4B4B4B !important;
+}
+.theme-dark-modern div.stButton > button:hover {
+    border: 1px solid #FF4B4B !important;
+    color: #FF4B4B !important;
+}
+.theme-dark-modern .stTextInput input,
+.theme-dark-modern .stTextArea textarea,
+.theme-dark-modern .stNumberInput input {
+    color: white !important;
+    background-color: #262730 !important;
+}
+.theme-dark-modern section[data-testid="stSidebar"] {
+    background-color: #1a1c24 !important;
+}
+.theme-dark-modern section[data-testid="stSidebar"] * {
+    color: white !important;
+}

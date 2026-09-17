@@ -1,0 +1,31 @@
+#     modified force field for oxo-G
+MASS
+DH 1.0
+
+BOND
+CK -O   570.0    1.229       JCC,7,(1986),230; AA,CYT,GUA,THY,URA
+CB-NA   414.0    1.391       JCC,7,(1986),230; ADE,GUA
+CK-NA   529.0    1.304       JCC,7,(1986),230; ADE,GUA
+
+ANGLE
+CB-CB-NA    70.0      111.30
+C -CB-NA    70.0      130.00
+CB-NA-H     30.0      120.00
+CB-NA-CK    70.0      103.80
+NA-CK-O     80.0      120.60
+N*-CK-O     80.0      120.90
+N*-CK-NA    70.0      115.40
+CK-NA-H     30.0      120.00
+
+DIHE
+X -CB-NA- X    4    6.00        180.0             2.         JCC,7,(1986),230
+X -CK-NA- X    4    5.60        180.0             2.         JCC,7,(1986),230
+
+IMPROPER
+NB-N*-CK-H5         1.1          180.          2.  from par94.dat
+NA-N*-CK- O       10.50          180.          2.  from par94.dat
+
+NONBOND
+
+
+

@@ -1,0 +1,130 @@
+# ========================================================================================
+# PRISM Environment & Dependency Manager (Pixi)
+# ========================================================================================
+# This file manages the Python environment, MODELLER installation, and task automation.
+# ========================================================================================
+
+[tool.pixi.workspace]
+name = "PRISM"
+version = "1.0.0"
+description = "Protected-Region Insertion Suite for Modeling"
+authors = ["Richard López-Corbalan <richard.lopezc@uah.es>"]
+license = "MIT"
+readme = "README.md"
+channels = ["conda-forge", "bioconda", "salilab"]
+platforms = ["linux-64", "osx-64", "osx-arm64"]
+
+[tool.pixi.activation.env]
+OPENCL_VENDOR_PATH = "/etc/OpenCL/vendors"
+PYTHONNOUSERSITE = "1"
+
+[tool.pixi.dependencies]
+python = ">=3.10, <3.12"
+modeller = ">=10.5"
+pydantic = ">=2.5.0"
+email-validator = ">=2.0.0"
+pyyaml = ">=6.0.0"
+requests = ">=2.31.0"
+nextflow = ">=23.10"
+streamlit = ">=1.30.0"
+pandas = ">=2.0.0"
+py3dmol = ">=2.0.0"
+plotly = ">=5.18.0"
+biopython = ">=1.81"
+numpy = ">=1.26.0"
+openmm = ">=8.0.0"
+rdkit = ">=2023.09.4"
+openmmforcefields = ">=0.12.0"
+ambertools = ">=23.0"
+
+# ========================================================================================
+
+[tool.pixi.tasks]
+setup = """
+mkdir -p modeling_results output_tools input license &&
+python -c "
+import os; 
+from pathlib import Path; 
+kf=Path('license/modeller_license.key'); 
+k=kf.read_text().strip() if kf.exists() else os.environ.get('KEY_MODELLER', 'MODELIRANJE'); 
+prefix=os.environ.get('CONDA_PREFIX', '');
+if not prefix:
+    print('CONDA_PREFIX not set. Skipping license application.');
+    exit(0);
+p=next(Path(prefix).rglob('modeller/config.py'), None); 
+if p:
+    c = p.read_text();
+    if 'XXXX' in c:
+        p.write_text(c.replace('XXXX', k)); 
+        print(f'License applied! Key: {k}')
+    else:
+        print('License already applied or XXXX not found.')
+else:
+    print(f'{kf} not found in environment.')
+"
+"""
+gui-prism = { cmd = "streamlit run PRISM/dashboard.py", depends-on = ["setup"] }
+gui-prism-persist = { cmd = "bash -c 'nohup streamlit run PRISM/dashboard.py > .prism-gui.log 2>&1 & echo $! > .prism-gui.pid && echo \"GUI launched in background (PID: $(cat .prism-gui.pid))\"'", depends-on = ["setup"] }
+terminal-prism = { cmd = "nextflow run pipeline/orchestrator.nf -params-file config.yaml", depends-on = ["setup"] }
+terminal-prism-persist = { cmd = "bash -c 'nohup nextflow run pipeline/orchestrator.nf -params-file config.yaml > .prism-cli.log 2>&1 & echo $! > .prism-cli.pid && echo \"Pipeline launched in background (PID: $(cat .prism-cli.pid))\"'", depends-on = ["setup"] }
+terminal-prism-persist-resume = { cmd = "bash -c 'nohup nextflow run pipeline/orchestrator.nf -resume -params-file config.yaml > .prism-cli.log 2>&1 & echo $! > .prism-cli.pid && echo \"Pipeline launched in background (PID: $(cat .prism-cli.pid))\"'", depends-on = ["setup"] }
+attach-gui = { cmd = "tail -f .prism-gui.log" }
+attach-terminal = { cmd = "tail -f .prism-cli.log" }
+stop-gui = { cmd = "bash -c 'kill $(cat .prism-gui.pid) && rm .prism-gui.pid && echo \"GUI stopped.\"'" }
+stop-terminal = { cmd = "bash -c 'kill $(cat .prism-cli.pid) && rm .prism-cli.pid && echo \"Pipeline stopped.\"'" }
+# Legacy alias for backward compatibility
+prism = { depends-on = ["terminal-prism"] }
+
+# ========================================================================================
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+    "D",    # pydocstyle
+    "S",    # bandit
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "C4",   # flake8-comprehensions
+    "DTZ",  # flake8-datetimez
+    "T20",  # flake8-print
+    "RET",  # flake8-return
+    "SIM",  # flake8-simplify
+    "ARG",  # flake8-unused-arguments
+    "PTH",  # flake8-use-pathlib
+    "ERA",  # eradicate
+    "PD",   # pandas-vet
+    "NPY",  # numpy-specific
+    "RUF",  # ruff-specific
+    "SLF",  # flake8-self
+    "LOG",  # flake8-logging
+    "PERF", # perflint
+    "PL",   # pylint
+    "TRY",  # tryceratops
+    "ICN",  # flake8-import-conventions
+]
+ignore = [
+    "TRY003", # Too many return statements
+    "D100",   # Missing docstring in public module
+    "D104",   # Missing docstring in public package
+    "D401",   # First line should be in imperative mood
+    "N999",   # Invalid module name (PRISM choice)
+]
+exclude = [".pixi/*"]  # Skip Ruff's virtual environment folder
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
