@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """OpenMM Protein-Ligand Minimization Pipeline with GAFF2 and Stepwise Restraints.
 
 This script performs a rigorous energy minimization of a target protein in the
@@ -359,7 +360,7 @@ def main() -> None:
         "--target-chain",
         type=str,
         default="A",
-        help="Chain ID for the target protein.",
+        help="Chain ID for the target protein (default: A).",
     )
     args = parser.parse_args()
 
