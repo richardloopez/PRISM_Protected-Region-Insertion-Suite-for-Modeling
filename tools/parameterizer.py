@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Automated Protein-Ligand Parameterization Utility.
 
 Extracts the target protein chain and specified ligand chains/residues,
