@@ -755,7 +755,7 @@ PRISM is designed for zero-friction deployment:
 
 - **No root access required** — Pixi installs all dependencies into a user-local environment.
 - **Fully offline at runtime** — dependencies are resolved and cached during `pixi run setup`; subsequent runs need no internet access.
-- **Reproducible** — all dependency versions are locked in `pixi.lock`, enabling bit-reproducible environments. A persistent release matching the publication is deposited on Zenodo (DOI: *insert upon deposition*).
+- **Reproducible** — all dependency versions are locked in `pixi.lock`, enabling bit-reproducible environments. A persistent release matching the publication is deposited on Zenodo (DOI: [10.5281/zenodo.23974479](https://doi.org/10.5281/zenodo.23974479)).
 
 ---
 
@@ -928,7 +928,7 @@ All pipeline parameters are validated by a **Pydantic v2** schema (the `PrismCon
 If you use PRISM in your research, please cite the primary publication and software release:
 
 **Software:**
-> López-Corbalan, R. (2026). *PRISM: Protected-Region Insertion Suite for Modeling* (Version 1.0.0). Zenodo. DOI: *(insert upon deposition)*.
+> López-Corbalan, R. (2026). *PRISM: Protected-Region Insertion Suite for Modeling* (Version 1.0.0). Zenodo. DOI: [10.5281/zenodo.23974479](https://doi.org/10.5281/zenodo.23974479).
 
 **BibTeX:**
 ```bibtex
@@ -937,7 +937,7 @@ If you use PRISM in your research, please cite the primary publication and softw
   title     = {{PRISM}: Protected-Region Insertion Suite for Modeling},
   year      = {2026},
   version   = {1.0.0},
-  doi       = {<insert Zenodo DOI>},
+  doi       = {10.5281/zenodo.23974479},
   note      = {A MODELLER-based pipeline for high-fidelity integrative protein
                modeling with guaranteed experimental coordinate preservation}
 }
